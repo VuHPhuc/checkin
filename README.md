@@ -1,4 +1,4 @@
-# Employee Attendance
+# Reminder Employee Attendance 
 
 This is a new Flutter project.  
 
@@ -11,6 +11,7 @@ This is a new Flutter project.
 *  Fix the Check-In Check-Out function using IP addresses (DONE)  
 *  Compress Check-In Check-Out image file size to less than 500kb and define a constant for the image size (which can be adjusted later) (DONE) 
 *  User avatar (Done)  
+*  Add a reminder  
   
 
 **Bug**  
@@ -21,6 +22,6 @@ This is a new Flutter project.
 
 **WIP**  
 
-*  Front-End  
-*  Add streambuilder   
+*  Reminder Screen  
+*  Admin website    
 
