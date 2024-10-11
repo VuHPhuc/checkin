@@ -1,0 +1,13 @@
+{
+  "en": [
+    "registerAddAvatar",
+    "checkinSuccessful",
+    "checkinInvalidData"
+  ],
+
+  "ko": [
+    "registerAddAvatar",
+    "checkinSuccessful",
+    "checkinInvalidData"
+  ]
+}
