@@ -77,36 +77,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            _buildTitle(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildTitle(),
+                Container(
+                  margin: const EdgeInsets.only(top: 20),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.black),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                )
+              ],
+            ),
             _buildMonthYearSelector(),
             const SizedBox(height: 20),
-            StreamBuilder<List<Records>>(
-              stream: Stream.periodic(const Duration(seconds: 1), (count) {
-                return _fetchRecords();
-              }).asyncMap((_) async => await _),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  final records = snapshot.data!;
-                  _groupedRecords = groupRecordsByDay(records);
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _groupedRecords.keys.length,
-                    itemBuilder: (context, index) {
-                      final date = _groupedRecords.keys.elementAt(index);
-                      final dayRecords = _groupedRecords[date]!;
-                      return _buildDayRecord(date, dayRecords);
-                    },
-                  );
-                } else if (snapshot.hasError) {
-                  return Center(
-                      child: Text(
-                          "${AppLocalizations.of(context)!.calendarError}${snapshot.error}"));
-                } else {
-                  return const Center(child: CircularProgressIndicator());
-                }
-              },
-            ),
+            _buildRecordsListView(),
           ],
         ),
       ),

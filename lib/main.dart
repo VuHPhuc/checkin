@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:checkin/model/apiHandler.dart';
 import 'package:checkin/model/users.dart';
 import 'package:checkin/screens/GuestNewsScreen.dart';
+import 'package:checkin/screens/NewsScreen.dart';
 import 'package:checkin/screens/HomeScreen.dart';
 import 'package:checkin/screens/LoginScreen.dart';
 import 'package:flutter/material.dart';
@@ -69,7 +70,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Bitexco Attendance',
+      title: 'HAU Reminder',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),

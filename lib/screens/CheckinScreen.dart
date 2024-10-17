@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:checkin/model/apiHandler.dart';
 import 'package:checkin/model/records.dart';
 import 'package:checkin/model/users.dart';
+import 'package:checkin/screens/CalenderScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -696,7 +697,40 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   ),
                 ),
               ),
-
+            Container(
+              margin: const EdgeInsets.only(top: 15),
+              child: SizedBox(
+                width: screenWidth,
+                height: screenHeight / 15,
+                child: ElevatedButton(
+                  onPressed: () {
+                    // Navigate to CalendarScreen when the button is pressed
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            CalendarScreen(currentUser: widget.currentUser),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: Text(
+                    AppLocalizations.of(context)!
+                        .checkinViewHistory, // Replace with your desired text
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
             // Display message "You have checked in today"
             if (checkIn != "--/--" && checkOut != "--/--")
               Container(

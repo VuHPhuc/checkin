@@ -114,5 +114,6 @@
   "checkinSelectImage":"Chọn ảnh",
 
   "checkinSuccessful":"Checkin/Out thành công",
-  "checkinInvalidData": "Checkin/CHeckout thiếu data"
+  "checkinInvalidData": "Checkin/CHeckout thiếu data",
+  "checkinViewHistory": "Lịch sử chấm công"
 }

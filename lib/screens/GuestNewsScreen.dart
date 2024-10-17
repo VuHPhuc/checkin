@@ -45,10 +45,10 @@ class _GuestNewsScreenState extends State<GuestNewsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: Image.asset('assets/img/ic_launcher2.jpg'),
-        title: const Text('Bitexco News',
+        leading: Image.asset('assets/img/ic_launcher2.png'),
+        title: const Text('HAU News',
             style: TextStyle(color: Colors.white, fontSize: 20)),
-        backgroundColor: const Color.fromARGB(253, 239, 68, 76),
+        backgroundColor: const Color.fromARGB(252, 56, 242, 255),
         actions: [
           IconButton(
             icon: const Icon(Icons.login),

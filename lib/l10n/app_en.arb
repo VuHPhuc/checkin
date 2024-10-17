@@ -110,5 +110,6 @@
 
   "checkinUploadError":"Check-in image save failed",
   "checkinImageUploadSuccess":"Check-in image upload successful",
-  "checkinSelectImage":"Select Image"
+  "checkinSelectImage":"Select Image",
+  "checkinViewHistory": "Check-in history"
 }

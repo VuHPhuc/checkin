@@ -3,6 +3,7 @@ import 'package:checkin/screens/CalenderScreen.dart';
 import 'package:checkin/screens/CheckinScreen.dart';
 import 'package:checkin/screens/NewsScreen.dart';
 import 'package:checkin/screens/UsersScreen.dart';
+import 'package:checkin/screens/ExamCalendarScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -48,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
         index: currentIndex,
         children: [
           const NewsScreen(),
-          CalendarScreen(currentUser: widget.currentUser),
+          ExamCalendarScreen(currentUser: widget.currentUser),
           CheckinScreen(currentUser: widget.currentUser),
           UsersScreen(currentUser: widget.currentUser),
         ],
