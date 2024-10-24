@@ -123,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               bottomLeft: Radius.circular(30),
                             ),
                             child: Image.asset(
-                              'assets/img/bitexco2.jpg',
+                              'assets/img/Hau.png',
                               width: double.infinity,
                               height: 400,
                               fit: BoxFit.cover,

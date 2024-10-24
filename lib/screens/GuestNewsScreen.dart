@@ -1,9 +1,8 @@
 import 'package:checkin/screens/LoginScreen.dart';
 import 'package:flutter/material.dart';
-import 'package:dart_rss/dart_rss.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html_parser;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class GuestNewsScreen extends StatefulWidget {
@@ -14,31 +13,48 @@ class GuestNewsScreen extends StatefulWidget {
 }
 
 class _GuestNewsScreenState extends State<GuestNewsScreen> {
-  late Future<RssFeed> _rssFeed;
+  late Future<List<Map<String, String>>> _newsDataFuture;
 
   @override
   void initState() {
     super.initState();
-    _rssFeed = fetchRssFeed();
+    _newsDataFuture = _fetchNewsData();
   }
 
-  Future<RssFeed> fetchRssFeed() async {
-    final response = await http.get(Uri.parse('https://bitexco.com.vn/feed/'));
+  Future<List<Map<String, String>>> _fetchNewsData() async {
+    final response =
+        await http.get(Uri.parse('https://hau.edu.vn/tin-tuc_c01/'));
+
     if (response.statusCode == 200) {
-      final rssFeed = RssFeed.parse(response.body);
-      return rssFeed;
-    } else {
-      throw Exception('Failed to load RSS feed');
-    }
-  }
+      final document = html_parser.parse(response.body);
+      final newsElements = document.querySelectorAll('.thumbnail-news');
 
-  String? extractImageUrl(String content) {
-    final document = html_parser.parse(content);
-    final imgElement = document.querySelector('img');
-    if (imgElement != null) {
-      return imgElement.attributes['src'];
+      List<Map<String, String>> newsData = [];
+
+      for (var element in newsElements) {
+        final titleElement = element.querySelector('.caption > h3 > a');
+        final imageUrlElement = element.querySelector('img');
+        final dateElement = element.querySelector('.date');
+
+        String title = titleElement?.text.trim() ?? '';
+        String link = titleElement?.attributes['href'] ?? '';
+        String imageUrl = imageUrlElement?.attributes['src'] != null
+            ? 'https://hau.edu.vn${imageUrlElement?.attributes['src']}'
+            : '';
+        String date = dateElement?.text.trim() ?? '';
+
+        newsData.add({
+          'title': title,
+          'link': link,
+          'imageUrl': imageUrl,
+          'date': date,
+        });
+      }
+
+      return newsData;
+    } else {
+      throw Exception('Failed to load data');
     }
-    return null;
   }
 
   @override
@@ -64,21 +80,21 @@ class _GuestNewsScreenState extends State<GuestNewsScreen> {
           ),
         ],
       ),
-      body: FutureBuilder<RssFeed>(
-        future: _rssFeed,
+      body: FutureBuilder<List<Map<String, String>>>(
+        future: _newsDataFuture,
         builder: (context, snapshot) {
           if (snapshot.hasData) {
-            final rssFeed = snapshot.data!;
+            final newsData = snapshot.data!;
+
             return ListView.builder(
-              itemCount: rssFeed.items.length,
+              itemCount: newsData.length,
               itemBuilder: (context, index) {
-                final item = rssFeed.items[index];
-                final imageUrl = extractImageUrl(item.content!.value);
+                final item = newsData[index];
 
                 return GestureDetector(
                   onTap: () {
-                    if (item.link != null) {
-                      launchUrl(Uri.parse(item.link!));
+                    if (item['link'] != null) {
+                      launchUrl(Uri.parse(item['link']!));
                     }
                   },
                   child: Card(
@@ -88,16 +104,19 @@ class _GuestNewsScreenState extends State<GuestNewsScreen> {
                           height: 200,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(10),
-                            image: imageUrl != null
-                                ? DecorationImage(
-                                    image: NetworkImage(imageUrl),
-                                    fit: BoxFit.cover,
-                                  )
-                                : const DecorationImage(
-                                    image:
-                                        AssetImage('assets/img/bitexco2.jpg'),
-                                    fit: BoxFit.cover,
-                                  ),
+                            image: DecorationImage(
+                              image: NetworkImage(item['imageUrl']!),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          child: Image.network(
+                            item['imageUrl']!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Image.asset(
+                              'assets/img/Hau.png',
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                         Padding(
@@ -106,7 +125,7 @@ class _GuestNewsScreenState extends State<GuestNewsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                item.title ?? '',
+                                item['title'] ?? '',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,
@@ -114,7 +133,7 @@ class _GuestNewsScreenState extends State<GuestNewsScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                item.pubDate ?? '',
+                                item['date'] ?? '',
                                 style: const TextStyle(fontSize: 14),
                               ),
                             ],
