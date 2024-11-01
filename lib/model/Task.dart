@@ -2,45 +2,30 @@ import 'package:flutter/material.dart';
 
 class Task {
   final int taskId;
-  final String title;
-  final TimeOfDay time;
-  final Color color;
-  final int day;
-  final int month;
-  final int year;
   final int userId;
-  final Duration? reminderDuration;
+  final String title;
+  final DateTime time;
+  final DateTime remindTime;
+  final Color color;
 
   Task({
     required this.taskId,
+    required this.userId,
     required this.title,
     required this.time,
+    required this.remindTime,
     required this.color,
-    required this.day,
-    required this.month,
-    required this.year,
-    required this.userId,
-    this.reminderDuration,
   });
 
   // Factory constructor from JSON
   factory Task.fromJson(Map<String, dynamic> json) {
-    Duration? reminderDuration;
-    if (json['reminderDuration'] != null) {
-      reminderDuration = Duration(seconds: json['reminderDuration']);
-    }
-
     return Task(
       taskId: json['taskId'],
-      title: json['title'],
-      time:
-          TimeOfDay(hour: json['time']['hour'], minute: json['time']['minute']),
-      color: _colorFromJson(json['color']),
-      day: json['day'],
-      month: json['month'],
-      year: json['year'],
       userId: json['userId'],
-      reminderDuration: reminderDuration,
+      title: json['title'],
+      time: DateTime.parse(json['time']),
+      remindTime: DateTime.parse(json['remindTime']),
+      color: _colorFromJson(json['color']),
     );
   }
 
@@ -48,14 +33,11 @@ class Task {
   Map<String, dynamic> toJson() {
     return {
       'taskId': taskId,
-      'title': title,
-      'time': {'hour': time.hour, 'minute': time.minute},
-      'color': color.value.toString(),
-      'day': day,
-      'month': month,
-      'year': year,
       'userId': userId,
-      'reminderDuration': reminderDuration?.inSeconds,
+      'title': title,
+      'time': time.toIso8601String(),
+      'remindTime': remindTime.toIso8601String(),
+      'color': color.value.toString(),
     };
   }
 
