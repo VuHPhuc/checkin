@@ -3,14 +3,14 @@ import 'package:checkin/model/task.dart';
 import 'package:checkin/model/users.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:checkin/screens/AddTaskScreen.dart';
+import 'package:checkin/screens/AddTaskScreen.dart'; // Make sure this path is correct
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:intl/intl.dart';
 
 class ExamCalendarScreen extends StatefulWidget {
   final User currentUser;
-
   const ExamCalendarScreen({Key? key, required this.currentUser})
       : super(key: key);
 
@@ -36,20 +36,13 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
   }
 
   Future<void> _initializeNotifications() async {
-    final InitializationSettings initializationSettings =
-        const InitializationSettings(
-      android: AndroidInitializationSettings("ic_launcher2"),
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('ic_launcher2');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+      android: initializationSettingsAndroid,
     );
-
-    await _flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-    );
-  }
-
-  @override
-  void dispose() {
-    // Hủy bỏ các hoạt động không đồng bộ ở đây nếu có
-    super.dispose();
+    await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
   Future<void> _loadTasks() async {
@@ -65,7 +58,7 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
         setState(() {
           _tasks = {};
           for (var task in userTasks) {
-            final date = DateTime(task.year, task.month, task.day);
+            final date = task.startTime; // Corrected - removed .toDate()
             if (_tasks.containsKey(date)) {
               _tasks[date]!.add(task);
             } else {
@@ -76,6 +69,7 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
       }
     } catch (e) {
       print('Error loading tasks: $e');
+      // TODO: Handle error, e.g., show a snackbar
     }
   }
 
@@ -91,57 +85,46 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
           currentUser: widget.currentUser,
           selectedDate: _selectedDay ?? _focusedDay,
           onTaskAdded: (newTask) {
-            // Nhận task mới từ AddTaskScreen
             setState(() {
-              final date = DateTime(newTask.year, newTask.month, newTask.day);
+              final date = newTask.startTime; // Corrected - removed .toDate()
               if (_tasks.containsKey(date)) {
                 _tasks[date]!.add(newTask);
               } else {
                 _tasks[date] = [newTask];
               }
             });
-
-            // Lên lịch thông báo (nếu cần)
             _scheduleReminder(newTask);
           },
         ),
       ),
-    );
+    ).then((_) => _loadTasks());
   }
 
   Future<void> _scheduleReminder(Task task) async {
-    if (task.reminderDuration != null) {
-      final DateTime taskTime = DateTime(
-        task.year,
-        task.month,
-        task.day,
-        task.time.hour,
-        task.time.minute,
-      );
-      final DateTime reminderTime = taskTime.subtract(task.reminderDuration!);
+    if (task.remindBefore > 0) {
+      final reminderTime =
+          task.startTime.subtract(Duration(milliseconds: task.remindBefore));
 
-      // Không cần cấu hình icon trong AndroidNotificationDetails
-      const AndroidNotificationDetails androidPlatformChannelSpecifics =
-          AndroidNotificationDetails(
-        'your_channel_id',
-        'your_channel_name',
-        channelDescription: 'your_channel_description',
-        importance: Importance.max,
-        priority: Priority.high,
-      );
-      const NotificationDetails platformChannelSpecifics =
+      final androidPlatformChannelSpecifics = AndroidNotificationDetails(
+          'your_channel_id', 'your_channel_name',
+          channelDescription: 'your_channel_description',
+          importance: Importance.max,
+          priority: Priority.high,
+          ticker: 'ticker');
+
+      final NotificationDetails platformChannelSpecifics =
           NotificationDetails(android: androidPlatformChannelSpecifics);
 
       await _flutterLocalNotificationsPlugin.zonedSchedule(
-        task.taskId, // Sử dụng taskId làm notificationId
+        task.taskId.hashCode,
         'Reminder',
-        'Bạn có reminder "${task.title}"',
+        task.title,
         tz.TZDateTime.from(reminderTime, tz.local),
         platformChannelSpecifics,
         androidAllowWhileIdle: true,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
-        payload: 'reminder_payload',
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
       );
     }
   }
@@ -179,7 +162,7 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
             },
             onPageChanged: (focusedDay) {
               _focusedDay = focusedDay;
-              _loadTasks();
+              _loadTasks(); // Load tasks when the page changes
             },
             eventLoader: _getTasksForDay,
           ),
@@ -192,6 +175,8 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
                     _getTasksForDay(_selectedDay ?? _focusedDay)[index];
                 return ListTile(
                   title: Text(task.title),
+                  subtitle: Text(
+                      DateFormat('HH:mm').format(task.startTime.toLocal())),
                   trailing: Container(
                     width: 8.0,
                     height: 8.0,

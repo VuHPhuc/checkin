@@ -2,12 +2,12 @@ import 'package:checkin/model/apiHandler.dart';
 import 'package:checkin/model/task.dart';
 import 'package:checkin/model/users.dart';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
 class AddTaskScreen extends StatefulWidget {
   final User currentUser;
   final DateTime selectedDate;
-  final Function(Task) onTaskAdded; // Callback trả về task đã tạo
-
+  final Function(Task) onTaskAdded;
   const AddTaskScreen({
     Key? key,
     required this.currentUser,
@@ -22,9 +22,8 @@ class AddTaskScreen extends StatefulWidget {
 class _AddTaskScreenState extends State<AddTaskScreen> {
   final TextEditingController _taskTitleController = TextEditingController();
   TimeOfDay? _selectedTime;
-  Duration? _selectedReminder;
+  int remindBefore = 0;
   Color? _selectedColor = Colors.grey;
-
   int? _selectedReminderDays;
   int? _selectedReminderHours;
   int? _selectedReminderMinutes;
@@ -56,17 +55,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
   }
 
-  Duration? _calculateReminderDuration() {
-    if (_selectedReminderDays != null ||
-        _selectedReminderHours != null ||
-        _selectedReminderMinutes != null) {
-      return Duration(
-        days: _selectedReminderDays ?? 0,
-        hours: _selectedReminderHours ?? 0,
-        minutes: _selectedReminderMinutes ?? 0,
-      );
-    }
-    return null;
+  void _calculateRemindBefore() {
+    remindBefore = Duration(
+      days: _selectedReminderDays ?? 0,
+      hours: _selectedReminderHours ?? 0,
+      minutes: _selectedReminderMinutes ?? 0,
+    ).inMilliseconds;
   }
 
   @override
@@ -113,7 +107,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     decoration: const InputDecoration(labelText: 'Ngày'),
                     onChanged: (value) {
                       setState(() {
-                        _selectedReminderDays = int.tryParse(value) ?? null;
+                        _selectedReminderDays = int.tryParse(value);
                       });
                     },
                   ),
@@ -125,7 +119,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     decoration: const InputDecoration(labelText: 'Giờ'),
                     onChanged: (value) {
                       setState(() {
-                        _selectedReminderHours = int.tryParse(value) ?? null;
+                        _selectedReminderHours = int.tryParse(value);
                       });
                     },
                   ),
@@ -137,7 +131,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     decoration: const InputDecoration(labelText: 'Phút'),
                     onChanged: (value) {
                       setState(() {
-                        _selectedReminderMinutes = int.tryParse(value) ?? null;
+                        _selectedReminderMinutes = int.tryParse(value);
                       });
                     },
                   ),
@@ -146,41 +140,69 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             ),
             const SizedBox(height: 16.0),
             const Text('Chọn màu:'),
-            Wrap(
-              spacing: 8.0,
-              children: [
-                _buildColorOption(Colors.amber, setState),
-                _buildColorOption(Colors.blue, setState),
-                _buildColorOption(Colors.red, setState),
-                _buildColorOption(Colors.grey[300]!, setState),
-              ],
-            ),
+            StatefulBuilder(// Use StatefulBuilder to update colors
+                builder: (context, setState) {
+              return Wrap(
+                spacing: 8.0,
+                children: [
+                  _buildColorOption(Colors.amber, setState),
+                  _buildColorOption(Colors.blue, setState),
+                  _buildColorOption(Colors.red, setState),
+                  _buildColorOption(Colors.grey,
+                      setState), // Fix: Use Colors.grey instead of Colors.grey[300]!
+                ],
+              );
+            }),
             const SizedBox(height: 32.0),
             ElevatedButton(
               onPressed: () async {
-                _selectedReminder = _calculateReminderDuration();
-                final newTask = Task(
-                  taskId: 0, //id này có thể  gây lỗi khi thêm task
-                  title: _taskTitleController.text,
-                  time: _selectedTime!,
-                  color: _selectedColor ?? Colors.grey,
-                  day: widget.selectedDate.day,
-                  month: widget.selectedDate.month,
-                  year: widget.selectedDate.year,
-                  userId: widget.currentUser.userId,
-                  reminderDuration: _selectedReminder,
+                if (_taskTitleController.text.isEmpty ||
+                    _selectedTime == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Vui lòng nhập nội dung và chọn giờ!')),
+                  );
+                  return;
+                }
+
+                _calculateRemindBefore();
+
+                final startTime = DateTime(
+                  widget.selectedDate.year,
+                  widget.selectedDate.month,
+                  widget.selectedDate.day,
+                  _selectedTime!.hour,
+                  _selectedTime!.minute,
                 );
 
-                final APIHandler apiHandler = APIHandler();
-                final success = await apiHandler.insertTask(newTask);
-                if (success) {
-                  // Gọi callback và truyền task mới
-                  widget.onTaskAdded(newTask);
-                  Navigator.pop(context);
-                } else {
-                  // Xử lý lỗi khi thêm task
+                try {
+                  final newTask = Task(
+                    taskId: const Uuid().v4(),
+                    title: _taskTitleController.text,
+                    startTime: startTime,
+                    endTime: startTime.add(const Duration(hours: 1)),
+                    remindBefore: remindBefore,
+                    userId: widget.currentUser.userId,
+                    color: _selectedColor,
+                  );
+
+                  newTask.updateColor();
+
+                  final apiHandler = APIHandler();
+                  final success = await apiHandler.insertTask(newTask);
+
+                  if (success) {
+                    widget.onTaskAdded(newTask);
+                    Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Lỗi khi thêm task!')),
+                    );
+                  }
+                } catch (e) {
+                  print("Error creating task: $e");
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Lỗi khi thêm task!')),
+                    const SnackBar(content: Text('Invalid user ID')),
                   );
                 }
               },

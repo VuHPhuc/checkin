@@ -39,13 +39,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
   late Records? _latestRecord;
 
   // Define a list of valid IP addresses
-  final List<String> _validIpAddresses = [
-    "192.168.0.106",
-    "192.168.0.103",
-    "192.168.112.153",
-    "192.168.1.105",
-    "10.154.20.218"
-  ];
+  final List<String> _validIpAddresses = [];
 
   // StreamController to manage data updates
   final _recordStreamController = StreamController<Records?>.broadcast();

@@ -1,31 +1,36 @@
 import 'package:flutter/material.dart';
 
 class Task {
-  final int taskId;
-  final int userId;
+  final String taskId; // Use String for taskId, preferably UUID
   final String title;
-  final DateTime time;
-  final DateTime remindTime;
-  final Color color;
+  final DateTime startTime; // Use DateTime for start and end times
+  final DateTime endTime;
+  final int remindBefore; // Reminder time in milliseconds
+  final int userId;
+  Color? color; // Make color optional and nullable
 
   Task({
     required this.taskId,
-    required this.userId,
     required this.title,
-    required this.time,
-    required this.remindTime,
-    required this.color,
+    required this.startTime,
+    required this.endTime,
+    required this.remindBefore,
+    required this.userId,
+    this.color,
   });
 
   // Factory constructor from JSON
   factory Task.fromJson(Map<String, dynamic> json) {
     return Task(
       taskId: json['taskId'],
-      userId: json['userId'],
       title: json['title'],
-      time: DateTime.parse(json['time']),
-      remindTime: DateTime.parse(json['remindTime']),
-      color: _colorFromJson(json['color']),
+      startTime: DateTime.parse(json['startTime']), // Parse startTime
+      endTime: DateTime.parse(json['endTime']), // Parse endTime
+      remindBefore: json['remindBefore'],
+      userId: json['userId'],
+      color: json['color'] != null
+          ? Color(int.parse(json['color']))
+          : null, // Parse color if present
     );
   }
 
@@ -33,15 +38,30 @@ class Task {
   Map<String, dynamic> toJson() {
     return {
       'taskId': taskId,
-      'userId': userId,
       'title': title,
-      'time': time.toIso8601String(),
-      'remindTime': remindTime.toIso8601String(),
-      'color': color.value.toString(),
+      'startTime': startTime.toIso8601String(), // Convert to ISO 8601 string
+      'endTime': endTime.toIso8601String(), // Convert to ISO 8601 string
+      'remindBefore': remindBefore,
+      'userId': userId,
+      'color': color?.value.toString(), // Convert color to string if present
     };
   }
 
-  static Color _colorFromJson(String colorString) {
-    return Color(int.parse(colorString));
+  // Method to calculate and update the color based on remindBefore
+  void updateColor() {
+    final now = DateTime.now();
+    final timeDifference = startTime.difference(now).inMilliseconds;
+
+    if (timeDifference <= Duration(hours: 1).inMilliseconds) {
+      color = Colors.red;
+    } else if (timeDifference <= Duration(days: 1).inMilliseconds) {
+      color = Colors.orange; // Or another color closer to red
+    } else if (timeDifference <= Duration(days: 2).inMilliseconds) {
+      color = Colors.yellow;
+    } else if (timeDifference <= Duration(days: 4).inMilliseconds) {
+      color = Colors.green;
+    } else {
+      color = null; // Or a default color
+    }
   }
 }
