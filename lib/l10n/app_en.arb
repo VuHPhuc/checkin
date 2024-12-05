@@ -53,7 +53,7 @@
   "checkinHello": "Hello,",
   "checkinMrMrs": "Mr/Mrs",
   "checkinEmail": "Email",
-  "checkinYourIp": "Your IP",
+  "checkinYourLocation": "Your Location",
   "checkinValid": "Valid",
   "checkinInvalid": "Invalid",
   "checkinTodayInformation": "Today's Information",

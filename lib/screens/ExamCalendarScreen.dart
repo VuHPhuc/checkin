@@ -105,14 +105,14 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
       final reminderTime =
           task.startTime.subtract(Duration(milliseconds: task.remindBefore));
 
-      final androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      const androidPlatformChannelSpecifics = AndroidNotificationDetails(
           'your_channel_id', 'your_channel_name',
           channelDescription: 'your_channel_description',
           importance: Importance.max,
           priority: Priority.high,
           ticker: 'ticker');
 
-      final NotificationDetails platformChannelSpecifics =
+      const NotificationDetails platformChannelSpecifics =
           NotificationDetails(android: androidPlatformChannelSpecifics);
 
       await _flutterLocalNotificationsPlugin.zonedSchedule(

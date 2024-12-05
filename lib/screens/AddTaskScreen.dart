@@ -3,11 +3,15 @@ import 'package:checkin/model/task.dart';
 import 'package:checkin/model/users.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 class AddTaskScreen extends StatefulWidget {
   final User currentUser;
   final DateTime selectedDate;
   final Function(Task) onTaskAdded;
+
   const AddTaskScreen({
     Key? key,
     required this.currentUser,
@@ -21,16 +25,30 @@ class AddTaskScreen extends StatefulWidget {
 
 class _AddTaskScreenState extends State<AddTaskScreen> {
   final TextEditingController _taskTitleController = TextEditingController();
-  TimeOfDay? _selectedTime;
+  TimeOfDay? _startTime;
+  TimeOfDay? _endTime;
   int remindBefore = 0;
   Color? _selectedColor = Colors.grey;
   int? _selectedReminderDays;
   int? _selectedReminderHours;
   int? _selectedReminderMinutes;
 
+  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
   @override
   void initState() {
     super.initState();
+    _initializeNotifications();
+    tz.initializeTimeZones();
+  }
+
+  Future<void> _initializeNotifications() async {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('ic_launcher2');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+    await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
   Widget _buildColorOption(Color color, StateSetter setState) {
@@ -63,6 +81,46 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     ).inMilliseconds;
   }
 
+  Future<void> _scheduleReminder(Task task) async {
+    final androidPlatformChannelSpecifics = AndroidNotificationDetails(
+      'your_channel_id',
+      'your_channel_name',
+      channelDescription: 'your_channel_description',
+      importance: Importance.max,
+      priority: Priority.high,
+      ticker: 'ticker',
+    );
+
+    final NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    if (task.remindBefore > 0) {
+      final startTimeReminderTime =
+          task.startTime.subtract(Duration(milliseconds: task.remindBefore));
+      await _flutterLocalNotificationsPlugin.zonedSchedule(
+          task.taskId.hashCode + 1,
+          'Reminder - Start',
+          task.title,
+          tz.TZDateTime.from(startTimeReminderTime, tz.local),
+          platformChannelSpecifics,
+          androidAllowWhileIdle: true,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime);
+    }
+
+    await _flutterLocalNotificationsPlugin.zonedSchedule(
+        task.taskId.hashCode + 2,
+        'Reminder - End',
+        task.title,
+        tz.TZDateTime.from(task.endTime, tz.local),
+        platformChannelSpecifics,
+        androidAllowWhileIdle: true,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -83,18 +141,37 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               onPressed: () async {
                 final TimeOfDay? pickedTime = await showTimePicker(
                   context: context,
-                  initialTime: TimeOfDay.now(),
+                  initialTime: _startTime ?? TimeOfDay.now(),
                 );
                 if (pickedTime != null) {
                   setState(() {
-                    _selectedTime = pickedTime;
+                    _startTime = pickedTime;
                   });
                 }
               },
               child: Text(
-                _selectedTime != null
-                    ? _selectedTime!.format(context)
-                    : 'Chọn giờ',
+                _startTime != null
+                    ? _startTime!.format(context)
+                    : 'Chọn giờ bắt đầu',
+              ),
+            ),
+            const SizedBox(height: 16.0),
+            ElevatedButton(
+              onPressed: () async {
+                final TimeOfDay? pickedTime = await showTimePicker(
+                  context: context,
+                  initialTime: _endTime ?? TimeOfDay.now(),
+                );
+                if (pickedTime != null) {
+                  setState(() {
+                    _endTime = pickedTime;
+                  });
+                }
+              },
+              child: Text(
+                _endTime != null
+                    ? _endTime!.format(context)
+                    : 'Chọn giờ kết thúc',
               ),
             ),
             const SizedBox(height: 16.0),
@@ -140,27 +217,29 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             ),
             const SizedBox(height: 16.0),
             const Text('Chọn màu:'),
-            StatefulBuilder(// Use StatefulBuilder to update colors
-                builder: (context, setState) {
-              return Wrap(
-                spacing: 8.0,
-                children: [
-                  _buildColorOption(Colors.amber, setState),
-                  _buildColorOption(Colors.blue, setState),
-                  _buildColorOption(Colors.red, setState),
-                  _buildColorOption(Colors.grey,
-                      setState), // Fix: Use Colors.grey instead of Colors.grey[300]!
-                ],
-              );
-            }),
+            StatefulBuilder(
+              builder: (context, setState) {
+                return Wrap(
+                  spacing: 8.0,
+                  children: [
+                    _buildColorOption(Colors.amber, setState),
+                    _buildColorOption(Colors.blue, setState),
+                    _buildColorOption(Colors.red, setState),
+                    _buildColorOption(Colors.grey, setState),
+                  ],
+                );
+              },
+            ),
             const SizedBox(height: 32.0),
             ElevatedButton(
               onPressed: () async {
                 if (_taskTitleController.text.isEmpty ||
-                    _selectedTime == null) {
+                    _startTime == null ||
+                    _endTime == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                        content: Text('Vui lòng nhập nội dung và chọn giờ!')),
+                        content: Text(
+                            'Vui lòng nhập nội dung và chọn giờ bắt đầu và kết thúc!')),
                   );
                   return;
                 }
@@ -171,8 +250,16 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   widget.selectedDate.year,
                   widget.selectedDate.month,
                   widget.selectedDate.day,
-                  _selectedTime!.hour,
-                  _selectedTime!.minute,
+                  _startTime!.hour,
+                  _startTime!.minute,
+                );
+
+                final endTime = DateTime(
+                  widget.selectedDate.year,
+                  widget.selectedDate.month,
+                  widget.selectedDate.day,
+                  _endTime!.hour,
+                  _endTime!.minute,
                 );
 
                 try {
@@ -180,7 +267,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     taskId: const Uuid().v4(),
                     title: _taskTitleController.text,
                     startTime: startTime,
-                    endTime: startTime.add(const Duration(hours: 1)),
+                    endTime: endTime,
                     remindBefore: remindBefore,
                     userId: widget.currentUser.userId,
                     color: _selectedColor,
@@ -192,6 +279,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   final success = await apiHandler.insertTask(newTask);
 
                   if (success) {
+                    _scheduleReminder(newTask);
                     widget.onTaskAdded(newTask);
                     Navigator.pop(context);
                   } else {

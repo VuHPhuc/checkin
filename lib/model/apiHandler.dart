@@ -13,7 +13,7 @@ import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
 
 class APIHandler {
-  final String baseUrl = 'http://172.24.236.153:5176/api';
+  final String baseUrl = 'http://192.168.0.120:5176/api';
   final Dio dio = Dio();
 
   // Get user from SQL Server

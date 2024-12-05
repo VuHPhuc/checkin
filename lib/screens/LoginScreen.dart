@@ -24,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _emailErrorText;
   String? _passwordErrorText;
 
-  final Color primaryColor = const Color.fromARGB(253, 239, 68, 76);
+  final Color primaryColor = const Color.fromARGB(251, 96, 244, 255);
 
   late SharedPreferences sharedPreferences;
   final APIHandler _apiHandler = APIHandler();

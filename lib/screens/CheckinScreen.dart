@@ -9,11 +9,10 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:network_info_plus/network_info_plus.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:dio/dio.dart';
-import 'package:path/path.dart' as path;
 
 class CheckinScreen extends StatefulWidget {
   final User currentUser;
@@ -33,35 +32,30 @@ class _CheckinScreenState extends State<CheckinScreen> {
   final GlobalKey key = GlobalKey();
   File? _image;
   bool _isImageCaptured = false;
-  String? _ipv4Address;
-  bool _isValidWifi = false;
+  String? _userLocation;
+  bool _isLocationEnabled = false;
+  bool _isLocationPermissionGranted = false;
   final APIHandler _apiHandler = APIHandler();
   late Records? _latestRecord;
 
-  // Define a list of valid IP addresses
-  final List<String> _validIpAddresses = [];
-
-  // StreamController to manage data updates
   final _recordStreamController = StreamController<Records?>.broadcast();
 
-  // Timer for updating the time display
   Timer? _timeUpdateTimer;
   Timer? _recordUpdateTimer;
   int _currentDayCheckOutCount = 0;
 
-  // State variable to track image upload progress
   bool _isLoadingImage = false;
 
   @override
   void initState() {
     super.initState();
-    _getRecord(); // Fetch initial data
-    _getipv4();
+    _getRecord();
+    _checkLocationPermission();
+    _getCurrentLocation();
   }
 
   @override
   void dispose() {
-    // Cancel the time and record update timers when the widget is disposed
     _timeUpdateTimer?.cancel();
     _recordUpdateTimer?.cancel();
     _recordStreamController.close();
@@ -92,7 +86,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
       _latestRecord = await _apiHandler.getLatestRecord(
           widget.currentUser.userId, currentDate);
 
-      // Update state ONLY when _latestRecord is not null
       if (_latestRecord != null) {
         setState(() {
           checkIn = _latestRecord!.checkIn;
@@ -100,26 +93,68 @@ class _CheckinScreenState extends State<CheckinScreen> {
         });
       }
 
-      // Update the StreamController
       _recordStreamController.add(_latestRecord);
     } catch (e) {
-      // Update UI
       setState(() {
-        // Call setstate
         checkIn = "--/--";
         checkOut = "--/--";
       });
-      // Add null to stream controller when error
       _recordStreamController.add(_latestRecord);
     }
   }
 
-  // Check if the IP address is in the valid list
-  bool _isWifiValid(String? ipAddress) {
-    if (ipAddress == null) {
-      return false;
+  Future<void> _checkLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      setState(() {
+        _isLocationEnabled = false;
+      });
+      return;
     }
-    return _validIpAddresses.contains(ipAddress);
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        setState(() {
+          _isLocationPermissionGranted = false;
+        });
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      setState(() {
+        _isLocationPermissionGranted = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLocationPermissionGranted = true;
+      _isLocationEnabled = true;
+    });
+  }
+
+  Future<void> _getCurrentLocation() async {
+    if (!_isLocationEnabled || !_isLocationPermissionGranted) {
+      return;
+    }
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      setState(() {
+        _userLocation = "${position.latitude}, ${position.longitude}";
+      });
+    } catch (e) {
+      print("Error getting location: $e");
+      setState(() {
+        _userLocation = null;
+      });
+    }
   }
 
   Future<void> _getImageFromCamera() async {
@@ -132,27 +167,16 @@ class _CheckinScreenState extends State<CheckinScreen> {
     if (pickedFile != null) {
       final imageFile = File(pickedFile.path);
 
-      // Save imageFile directly
       _image = imageFile;
 
       setState(() {
         _image = _image;
         _isImageCaptured = true;
-        _getipv4();
+        _getCurrentLocation();
       });
     }
   }
 
-  // Get IP address from network
-  Future<void> _getipv4() async {
-    String? ipAddress = await NetworkInfo().getWifiIP();
-    setState(() {
-      _ipv4Address = ipAddress;
-      _isValidWifi = _isWifiValid(_ipv4Address);
-    });
-  }
-
-  // Function to resize and compress image using flutter_image_compress
   Future<Uint8List?> resizeAndCompressImage(
       File imageFile, int maxWidth, int maxHeight) async {
     var result = await FlutterImageCompress.compressWithFile(
@@ -164,16 +188,13 @@ class _CheckinScreenState extends State<CheckinScreen> {
     return result;
   }
 
-  // Function to upload the selected image and return the image location
   Future<String?> _uploadImageAndReturnLocation(
       File? imageFile, String type) async {
     if (imageFile != null) {
-      // Set loading flag
       setState(() {
         _isLoadingImage = true;
       });
       try {
-        // Rename image based on type (check-in or check-out)
         String filename;
         if (type == 'checkin') {
           filename =
@@ -184,13 +205,11 @@ class _CheckinScreenState extends State<CheckinScreen> {
           _currentDayCheckOutCount++;
         }
 
-        // Create FormData object with the image
         final FormData formData = FormData.fromMap({
           'file':
               await MultipartFile.fromFile(imageFile.path, filename: filename),
         });
 
-        // API endpoint for check-in/check-out image
         final apiUrl = '${_apiHandler.baseUrl}/records/location';
         final response = await Dio().post(
           apiUrl,
@@ -200,7 +219,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
           ),
         );
 
-        // Handle the response
         if (response.statusCode == 200) {
           _showSuccessMessage(
               AppLocalizations.of(context)!.checkinImageUploadSuccess);
@@ -211,23 +229,19 @@ class _CheckinScreenState extends State<CheckinScreen> {
           await _getRecord();
           return response.data['location'];
         } else {
-          // Handle errors during image upload
           _showErrorMessage(AppLocalizations.of(context)!.checkinUploadError);
         }
       } catch (e) {
-        // Handle general errors
         _showErrorMessage(AppLocalizations.of(context)!.checkinUploadError);
       } finally {
-        // Reset loading flag
         setState(() {
           _isLoadingImage = false;
         });
       }
     } else {
-      // Handle the case where no image is selected
       _showErrorMessage(AppLocalizations.of(context)!.checkinSelectImage);
     }
-    return null; // Return null if image upload fails
+    return null;
   }
 
   @override
@@ -267,7 +281,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      AppLocalizations.of(context)!.checkinYourIp,
+                      AppLocalizations.of(context)!.checkinYourLocation,
                       style: TextStyle(
                           color: primaryColor,
                           fontSize: 17,
@@ -293,40 +307,12 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           color: Colors.black,
                           fontWeight: FontWeight.bold),
                     ),
-                    Row(
-                      children: [
-                        Text(
-                          ':  ${_ipv4Address ?? '...'}',
-                          style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(width: 6),
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: _isValidWifi ? Colors.green : Colors.red,
-                              width: 2,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
-                            child: Text(
-                              _isValidWifi
-                                  ? AppLocalizations.of(context)!.checkinValid
-                                  : AppLocalizations.of(context)!
-                                      .checkinInvalid,
-                              style: TextStyle(
-                                  fontSize: 16,
-                                  color:
-                                      _isValidWifi ? Colors.green : Colors.red),
-                            ),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      ':  ${_userLocation ?? '...'}',
+                      style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -334,7 +320,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
             ),
             Container(
               alignment: Alignment.centerLeft,
-              // margin: const EdgeInsets.only(top: 20),
               child: Text(
                 AppLocalizations.of(context)!.checkinTodayInformation,
                 style: const TextStyle(
@@ -399,7 +384,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         style: const TextStyle(
                             fontSize: 20, color: Colors.black54),
                       ),
-                      // Update checkIn using StreamBuilder
                       StreamBuilder<Records?>(
                         stream: _recordStreamController.stream,
                         builder: (context, snapshot) {
@@ -434,7 +418,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
                         style: const TextStyle(
                             fontSize: 20, color: Colors.black54),
                       ),
-                      // Update checkOut using StreamBuilder
                       StreamBuilder<Records?>(
                         stream: _recordStreamController.stream,
                         builder: (context, snapshot) {
@@ -462,10 +445,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 ],
               ),
             ),
-            // Part for displaying the take picture button and image preview
             Row(
               children: [
-                // Take picture button
                 IconButton(
                   onPressed: _getImageFromCamera,
                   icon: Stack(
@@ -477,7 +458,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     ],
                   ),
                 ),
-                // Image preview
                 if (_isImageCaptured)
                   Expanded(
                     child: Image.file(
@@ -489,7 +469,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   ),
               ],
             ),
-            // Check-in button
             if (checkIn == "--/--")
               Container(
                 margin: const EdgeInsets.only(top: 15),
@@ -498,16 +477,13 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   height: screenHeight / 15,
                   child: ElevatedButton(
                     onPressed: _isImageCaptured &&
-                            _isValidWifi &&
                             _image != null &&
                             !_isLoadingImage
                         ? () async {
-                            // Get the image location
                             String? locationImg =
                                 await _uploadImageAndReturnLocation(
                                     _image, 'checkin');
 
-                            // Create a new record
                             Records record = Records(
                               id: 0,
                               userId: widget.currentUser.userId,
@@ -521,47 +497,39 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               location: locationImg ?? '',
                               remark: 'None',
                               imgName:
-                                  'checkin_${widget.currentUser.userId}_${widget.currentUser.name}_${DateTime.now().millisecondsSinceEpoch}.jpg', // Gán tên file mới cho imgName
-                              ip: _ipv4Address ?? '',
+                                  'checkin_${widget.currentUser.userId}_${widget.currentUser.name}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                              ip: _userLocation ?? '',
                             );
 
-                            // Send check-in request to API
                             try {
-                              // Call API to insert a new record
                               final response = await _apiHandler.insertRecord(
                                   record, _image);
 
-                              // Handle different responses based on update type:
                               if (response.statusCode == 201) {
                                 print(
                                     'Check-in successful: ${response.statusCode}');
                                 setState(() {
-                                  checkIn = DateFormat('HH:mm').format(
-                                      DateTime.now()); // Update checkIn here
+                                  checkIn = DateFormat('HH:mm')
+                                      .format(DateTime.now());
 
-                                  // Now call _getRecord to update the StreamBuilder
                                   _getRecord();
                                 });
                               } else {
-                                // Handle specific API errors based on response.statusCode
                                 if (response.statusCode == 400) {
-                                  // Display error message based on API response
                                   ScaffoldMessenger.of(context)
                                       .showSnackBar(SnackBar(
-                                    content: Text(
-                                        "Invalid data: ${response.data}"), // Access data using response.data
+                                    content:
+                                        Text("Invalid data: ${response.data}"),
                                   ));
                                 } else {
-                                  // Handle other errors
                                   ScaffoldMessenger.of(context)
                                       .showSnackBar(SnackBar(
                                     content: Text(
-                                        "Check-in Error: ${response.data}"), // Access data using response.data
+                                        "Check-in Error: ${response.data}"),
                                   ));
                                 }
                               }
                             } catch (e) {
-                              // Handle API call errors
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                     content: Text(
@@ -571,15 +539,14 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           }
                         : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _isImageCaptured && _isValidWifi
-                          ? primaryColor
-                          : Colors.grey[400]!,
+                      backgroundColor:
+                          _isImageCaptured ? primaryColor : Colors.grey[400]!,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                     child: Text(
-                      _isImageCaptured && _isValidWifi
+                      _isImageCaptured
                           ? AppLocalizations.of(context)!.checkinPressToCheckIn
                           : AppLocalizations.of(context)!
                               .checkinTakePictureAndCheckWifi,
@@ -591,7 +558,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   ),
                 ),
               ),
-            // Check-out button
             if (checkIn != "--/--")
               Container(
                 margin: const EdgeInsets.only(top: 15),
@@ -600,14 +566,13 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   height: screenHeight / 15,
                   child: ElevatedButton(
                     onPressed: _isImageCaptured &&
-                            _isValidWifi &&
                             _image != null &&
                             !_isLoadingImage
                         ? () async {
                             String? locationImg =
                                 await _uploadImageAndReturnLocation(
                                     _image, 'checkout');
-                            // Create Records object (with location)
+
                             Records record = Records(
                               id: 0,
                               userId: widget.currentUser.userId,
@@ -621,47 +586,40 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               location: locationImg ?? '',
                               remark: 'None',
                               imgName:
-                                  'checkout-${_currentDayCheckOutCount}_${widget.currentUser.userId}_${widget.currentUser.name}_${DateTime.now().millisecondsSinceEpoch}.jpg', // Gán tên file mới cho imgName
-                              ip: _ipv4Address!,
+                                  'checkout-${_currentDayCheckOutCount}_${widget.currentUser.userId}_${widget.currentUser.name}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                              ip: _userLocation!,
                             );
 
-                            // Send check-out request to API
                             try {
-                              // Call API to insert a new record
                               final response = await _apiHandler.insertRecord(
                                   record, _image);
 
-                              // Handle different responses based on update type:
                               if (response.statusCode == 201) {
                                 print(
                                     'Check-out successful: ${response.statusCode}');
                                 setState(() {
                                   checkOut = DateFormat('HH:mm')
                                       .format(DateTime.now());
-                                  // Do not reset checkIn, keep it as it is
-                                  _getRecord(); // Fetch updated record
+
+                                  _getRecord();
                                 });
                                 ;
                               } else {
-                                // Handle specific API errors based on response.statusCode
                                 if (response.statusCode == 400) {
-                                  // Display error message based on API response
                                   ScaffoldMessenger.of(context)
                                       .showSnackBar(SnackBar(
-                                    content: Text(
-                                        "Invalid data: ${response.data}"), // Access data using response.data
+                                    content:
+                                        Text("Invalid data: ${response.data}"),
                                   ));
                                 } else {
-                                  // Handle other errors
                                   ScaffoldMessenger.of(context)
                                       .showSnackBar(SnackBar(
                                     content: Text(
-                                        "Check-out Error: ${response.data}"), // Access data using response.data
+                                        "Check-out Error: ${response.data}"),
                                   ));
                                 }
                               }
                             } catch (e) {
-                              // Handle API call errors
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                     content: Text(
@@ -671,15 +629,14 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           }
                         : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _isImageCaptured && _isValidWifi
-                          ? primaryColor
-                          : Colors.grey[400]!,
+                      backgroundColor:
+                          _isImageCaptured ? primaryColor : Colors.grey[400]!,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                     child: Text(
-                      _isImageCaptured && _isValidWifi
+                      _isImageCaptured
                           ? AppLocalizations.of(context)!.checkinPressToCheckOut
                           : AppLocalizations.of(context)!
                               .checkinTakePictureAndCheckWifi,
@@ -698,7 +655,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 height: screenHeight / 15,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Navigate to CalendarScreen when the button is pressed
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -714,8 +670,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     ),
                   ),
                   child: Text(
-                    AppLocalizations.of(context)!
-                        .checkinViewHistory, // Replace with your desired text
+                    AppLocalizations.of(context)!.checkinViewHistory,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -725,7 +680,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 ),
               ),
             ),
-            // Display message "You have checked in today"
             if (checkIn != "--/--" && checkOut != "--/--")
               Container(
                 margin: const EdgeInsets.only(top: 25),

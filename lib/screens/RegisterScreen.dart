@@ -35,7 +35,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _confirmPasswordErrorText;
   String? _phoneErrorText;
 
-  final Color primaryColor = const Color.fromARGB(253, 239, 68, 76);
+  final Color primaryColor = const Color.fromARGB(252, 56, 242, 255);
   final APIHandler _apiHandler = APIHandler();
 
   String? validateEmail(String? value) {
