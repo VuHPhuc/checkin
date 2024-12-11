@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:dio/dio.dart';
@@ -32,9 +31,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
   final GlobalKey key = GlobalKey();
   File? _image;
   bool _isImageCaptured = false;
-  String? _userLocation;
-  bool _isLocationEnabled = false;
-  bool _isLocationPermissionGranted = false;
   final APIHandler _apiHandler = APIHandler();
   late Records? _latestRecord;
 
@@ -50,8 +46,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
   void initState() {
     super.initState();
     _getRecord();
-    _checkLocationPermission();
-    _getCurrentLocation();
   }
 
   @override
@@ -103,60 +97,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
     }
   }
 
-  Future<void> _checkLocationPermission() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      setState(() {
-        _isLocationEnabled = false;
-      });
-      return;
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        setState(() {
-          _isLocationPermissionGranted = false;
-        });
-        return;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      setState(() {
-        _isLocationPermissionGranted = false;
-      });
-      return;
-    }
-
-    setState(() {
-      _isLocationPermissionGranted = true;
-      _isLocationEnabled = true;
-    });
-  }
-
-  Future<void> _getCurrentLocation() async {
-    if (!_isLocationEnabled || !_isLocationPermissionGranted) {
-      return;
-    }
-    try {
-      Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
-      setState(() {
-        _userLocation = "${position.latitude}, ${position.longitude}";
-      });
-    } catch (e) {
-      print("Error getting location: $e");
-      setState(() {
-        _userLocation = null;
-      });
-    }
-  }
-
   Future<void> _getImageFromCamera() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
@@ -172,7 +112,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
       setState(() {
         _image = _image;
         _isImageCaptured = true;
-        _getCurrentLocation();
       });
     }
   }
@@ -308,7 +247,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                           fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      ':  ${_userLocation ?? '...'}',
+                      ':  ...', // Displaying "..." as placeholder
                       style: const TextStyle(
                           fontSize: 16,
                           color: Colors.black,
@@ -498,7 +437,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               remark: 'None',
                               imgName:
                                   'checkin_${widget.currentUser.userId}_${widget.currentUser.name}_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                              ip: _userLocation ?? '',
+                              ip: 'none', // ip set as empty string
                             );
 
                             try {
@@ -587,9 +526,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               remark: 'None',
                               imgName:
                                   'checkout-${_currentDayCheckOutCount}_${widget.currentUser.userId}_${widget.currentUser.name}_${DateTime.now().millisecondsSinceEpoch}.jpg',
-                              ip: _userLocation!,
+                              ip: 'none', // ip set as empty string
                             );
-
                             try {
                               final response = await _apiHandler.insertRecord(
                                   record, _image);
@@ -603,7 +541,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
 
                                   _getRecord();
                                 });
-                                ;
                               } else {
                                 if (response.statusCode == 400) {
                                   ScaffoldMessenger.of(context)

@@ -82,7 +82,7 @@
   "registerTitle": "Register",
   "registerEnterName": "Enter your name",
   "registerEnterEmail": "Enter your email",
-  "registerEnterPassword": "Re-enter password",
+  "registerEnterPassword": "Enter password",
   "registerConfirmPassword": "Confirm Password",
   "registerEnterPhone": "Enter your phone number",
   "registerRegister": "Register",

@@ -1,199 +1,193 @@
-import 'package:checkin/model/apiHandler.dart';
-import 'package:checkin/model/task.dart';
-import 'package:checkin/model/users.dart';
 import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
-import 'package:checkin/screens/AddTaskScreen.dart'; // Make sure this path is correct
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
 import 'package:intl/intl.dart';
+import 'package:checkin/screens/AddTaskScreen.dart';
 
 class ExamCalendarScreen extends StatefulWidget {
-  final User currentUser;
-  const ExamCalendarScreen({Key? key, required this.currentUser})
-      : super(key: key);
-
   @override
   _ExamCalendarScreenState createState() => _ExamCalendarScreenState();
 }
 
 class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
-  CalendarFormat _calendarFormat = CalendarFormat.month;
-  DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay;
-  Map<DateTime, List<Task>> _tasks = {};
-  final APIHandler _apiHandler = APIHandler();
-  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  DateTime _selectedDate = DateTime.now();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _loadTasks();
-    _initializeNotifications();
-    tz.initializeTimeZones();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToSelectedDate();
+    });
   }
 
-  Future<void> _initializeNotifications() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('ic_launcher2');
-    const InitializationSettings initializationSettings =
-        InitializationSettings(
-      android: initializationSettingsAndroid,
-    );
-    await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
-  }
-
-  Future<void> _loadTasks() async {
-    final now = DateTime.now();
-    final firstDayOfMonth = DateTime(now.year, now.month, 1);
-    final lastDayOfMonth = DateTime(now.year, now.month + 1, 0);
-
-    try {
-      final userTasks = await _apiHandler.getUserTasks(
-          widget.currentUser.userId, firstDayOfMonth, lastDayOfMonth);
-
-      if (mounted) {
-        setState(() {
-          _tasks = {};
-          for (var task in userTasks) {
-            final date = task.startTime; // Corrected - removed .toDate()
-            if (_tasks.containsKey(date)) {
-              _tasks[date]!.add(task);
-            } else {
-              _tasks[date] = [task];
-            }
-          }
-        });
+  void _presentDatePicker() {
+    showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2025),
+    ).then((pickedDate) {
+      if (pickedDate == null) {
+        return;
       }
-    } catch (e) {
-      print('Error loading tasks: $e');
-      // TODO: Handle error, e.g., show a snackbar
-    }
+      setState(() {
+        _selectedDate = pickedDate;
+        _scrollToSelectedDate();
+      });
+    });
   }
 
-  List<Task> _getTasksForDay(DateTime day) {
-    return _tasks[day] ?? [];
-  }
+  void _scrollToSelectedDate() {
+    // Calculate tile width dynamically based on screen width
 
-  void _navigateToAddTaskScreen() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddTaskScreen(
-          currentUser: widget.currentUser,
-          selectedDate: _selectedDay ?? _focusedDay,
-          onTaskAdded: (newTask) {
-            setState(() {
-              final date = newTask.startTime; // Corrected - removed .toDate()
-              if (_tasks.containsKey(date)) {
-                _tasks[date]!.add(newTask);
-              } else {
-                _tasks[date] = [newTask];
-              }
-            });
-            _scheduleReminder(newTask);
-          },
-        ),
-      ),
-    ).then((_) => _loadTasks());
-  }
+    double screenWidth = MediaQuery.of(context).size.width;
+    double tileWidth = screenWidth / 5; // Show 5 tiles at a time
 
-  Future<void> _scheduleReminder(Task task) async {
-    if (task.remindBefore > 0) {
-      final reminderTime =
-          task.startTime.subtract(Duration(milliseconds: task.remindBefore));
+    int daysDifference = _selectedDate
+        .difference(DateTime.now().subtract(Duration(days: 2)))
+        .inDays;
 
-      const androidPlatformChannelSpecifics = AndroidNotificationDetails(
-          'your_channel_id', 'your_channel_name',
-          channelDescription: 'your_channel_description',
-          importance: Importance.max,
-          priority: Priority.high,
-          ticker: 'ticker');
+    double scrollOffset = daysDifference * tileWidth;
 
-      const NotificationDetails platformChannelSpecifics =
-          NotificationDetails(android: androidPlatformChannelSpecifics);
-
-      await _flutterLocalNotificationsPlugin.zonedSchedule(
-        task.taskId.hashCode,
-        'Reminder',
-        task.title,
-        tz.TZDateTime.from(reminderTime, tz.local),
-        platformChannelSpecifics,
-        androidAllowWhileIdle: true,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
-      );
-    }
+    _scrollController.animateTo(scrollOffset,
+        duration: Duration(milliseconds: 300), curve: Curves.ease);
   }
 
   @override
   Widget build(BuildContext context) {
+    final primaryClr = Color(0xFF90CAF9);
+
+    String todayDate = DateFormat('MMMM dd, yyyy').format(DateTime.now());
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Lịch reminder"),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Today",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  todayDate,
+                  style: TextStyle(fontSize: 18),
+                ),
+              ],
+            ),
+            TextButton(
+              style: TextButton.styleFrom(
+                  backgroundColor: primaryClr,
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20))),
+              onPressed: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => AddTaskScreen()));
+              },
+              child: Text(
+                '+ Add Task',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        automaticallyImplyLeading: false,
       ),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TableCalendar(
-            firstDay: DateTime.utc(2010, 10, 16),
-            lastDay: DateTime.utc(2030, 3, 14),
-            focusedDay: _focusedDay,
-            calendarFormat: _calendarFormat,
-            selectedDayPredicate: (day) {
-              return isSameDay(_selectedDay, day);
-            },
-            onDaySelected: (selectedDay, focusedDay) {
-              if (!isSameDay(_selectedDay, selectedDay)) {
-                setState(() {
-                  _selectedDay = selectedDay;
-                  _focusedDay = focusedDay;
-                });
-              }
-            },
-            onFormatChanged: (format) {
-              if (_calendarFormat != format) {
-                setState(() {
-                  _calendarFormat = format;
-                });
-              }
-            },
-            onPageChanged: (focusedDay) {
-              _focusedDay = focusedDay;
-              _loadTasks(); // Load tasks when the page changes
-            },
-            eventLoader: _getTasksForDay,
-          ),
-          const SizedBox(height: 8.0),
-          Expanded(
+          SizedBox(
+            height: 140, // Fixed height for now
+
             child: ListView.builder(
-              itemCount: _getTasksForDay(_selectedDay ?? _focusedDay).length,
+              controller: _scrollController,
+
+              scrollDirection: Axis.horizontal,
+
+              padding: EdgeInsets.symmetric(
+                  vertical: 16), // Remove horizontal padding
+
               itemBuilder: (context, index) {
-                final task =
-                    _getTasksForDay(_selectedDay ?? _focusedDay)[index];
-                return ListTile(
-                  title: Text(task.title),
-                  subtitle: Text(
-                      DateFormat('HH:mm').format(task.startTime.toLocal())),
-                  trailing: Container(
-                    width: 8.0,
-                    height: 8.0,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: task.color,
-                    ),
-                  ),
-                );
+                DateTime date = DateTime.now()
+                    .subtract(Duration(days: 2))
+                    .add(Duration(days: index));
+
+                return _buildDateTile(date, primaryClr,
+                    context); // Pass context to _buildDateTile
               },
+
+              itemCount: 365 * 10,
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToAddTaskScreen,
-        child: const Icon(Icons.add),
+    );
+  }
+
+  Widget _buildDateTile(DateTime date, Color primaryClr, BuildContext context) {
+    // Add context parameter
+
+    bool isSelected = date.year == _selectedDate.year &&
+        date.month == _selectedDate.month &&
+        date.day == _selectedDate.day;
+
+    // Calculate tile width dynamically
+
+    double tileWidth = MediaQuery.of(context).size.width / 5;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedDate = date;
+
+          _scrollToSelectedDate();
+        });
+      },
+      child: SizedBox(
+        // Use SizedBox for width
+
+        width: tileWidth, // Set calculated width
+
+        height: 110,
+
+        child: Container(
+          // Use Container for background color, padding, etc.
+
+          margin:
+              EdgeInsets.symmetric(horizontal: 2), // Smaller horizontal margin
+
+          decoration: BoxDecoration(
+            color: isSelected ? primaryClr : null,
+            borderRadius: BorderRadius.circular(8),
+          ),
+
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                DateFormat('MMM').format(date).toUpperCase(),
+                style: TextStyle(
+                    fontSize: 14,
+                    color: isSelected ? Colors.white : Colors.grey),
+              ),
+              Text(
+                DateFormat('dd').format(date),
+                style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? Colors.white : Colors.black),
+              ),
+              Text(
+                DateFormat('yyyy').format(date),
+                style: TextStyle(
+                    fontSize: 14,
+                    color: isSelected ? Colors.white : Colors.grey),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
