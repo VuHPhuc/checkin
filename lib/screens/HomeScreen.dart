@@ -49,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
         index: currentIndex,
         children: [
           const NewsScreen(),
-          ExamCalendarScreen(),
+          ExamCalendarScreen(currentUser: widget.currentUser),
           CheckinScreen(currentUser: widget.currentUser),
           UsersScreen(currentUser: widget.currentUser),
         ],

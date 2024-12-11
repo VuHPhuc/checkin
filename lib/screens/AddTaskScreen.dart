@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:checkin/model/apiHandler.dart';
+import 'package:checkin/model/task.dart';
+import 'package:checkin/model/users.dart';
 
 class AddTaskScreen extends StatefulWidget {
-  const AddTaskScreen({Key? key}) : super(key: key);
+  final User currentUser;
+  const AddTaskScreen({Key? key, required this.currentUser}) : super(key: key);
 
   @override
   State<AddTaskScreen> createState() => _AddTaskScreenState();
@@ -198,10 +203,53 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   backgroundColor: Colors.blue,
                   textStyle: const TextStyle(fontSize: 18),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   if (_formKey.currentState!.validate()) {
                     _formKey.currentState!.save();
-                    // Handle saving the task data here
+
+                    int colorValue = _selectedColor?.value ?? 0;
+
+                    Task newTask = Task(
+                      userId: widget.currentUser.userId,
+                      title: _title,
+                      note: _note,
+                      isCompleted: 0,
+                      date: _date != null
+                          ? DateFormat('yyyy-MM-dd').format(_date!)
+                          : null,
+                      startTime: _startTime != null
+                          ? _startTime!.format(context)
+                          : null,
+                      endTime:
+                          _endTime != null ? _endTime!.format(context) : null,
+                      color: colorValue,
+                      remind: _remind,
+                      repeat: _repeat,
+                    );
+
+                    try {
+                      final apiHandler = APIHandler();
+                      final response = await apiHandler.insertTask(newTask);
+
+                      if (response.statusCode == 201) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Task created successfully')),
+                        );
+                        Navigator.pop(context);
+                      } else {
+                        print('Failed to create task: ${response.statusCode}');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Failed to create task')),
+                        );
+                      }
+                    } catch (e) {
+                      print('Error creating task: $e');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error creating task: $e')),
+                      );
+                    }
                   }
                 },
                 child: const Text('Create Task'),

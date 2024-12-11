@@ -461,4 +461,18 @@ class APIHandler {
       throw e;
     }
   }
+
+  Future<Response> insertTask(Task task) async {
+    try {
+      final response = await dio.post(
+        '$baseUrl/task',
+        data: task.toJson(),
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      );
+      return response;
+    } catch (e) {
+      print('API call error inserting task: $e');
+      rethrow; // Re-throw the error to be handled by the caller
+    }
+  }
 }
