@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:checkin/screens/AddTaskScreen.dart';
 import 'package:checkin/model/users.dart';
+import 'package:checkin/model/task.dart';
+import 'package:checkin/model/apiHandler.dart';
+import 'dart:async';
+import 'dart:math';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class ExamCalendarScreen extends StatefulWidget {
   final User currentUser;
@@ -15,13 +20,37 @@ class ExamCalendarScreen extends StatefulWidget {
 class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
   DateTime _selectedDate = DateTime.now();
   final ScrollController _scrollController = ScrollController();
+  List<Task> _tasks = [];
+  Timer? _refreshTimer;
+  static DateTime? lastSnackbarTime;
+  Map<int, Color> _taskColors = {};
+  List<Color> _availableColors = [
+    Colors.red,
+    Colors.blue,
+    Colors.green,
+    Colors.yellow,
+    Colors.orange,
+    Colors.purple,
+    Colors.pink,
+    Colors.teal,
+    Colors.indigo,
+    Colors.brown,
+  ];
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToSelectedDate();
-    });
+    _fetchTasks();
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _scrollToSelectedDate());
+    _refreshTimer =
+        Timer.periodic(const Duration(seconds: 1), (timer) => _fetchTasks());
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   void _presentDatePicker() {
@@ -31,9 +60,7 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
       firstDate: DateTime(2020),
       lastDate: DateTime(2025),
     ).then((pickedDate) {
-      if (pickedDate == null) {
-        return;
-      }
+      if (pickedDate == null) return;
       setState(() {
         _selectedDate = pickedDate;
         _scrollToSelectedDate();
@@ -44,20 +71,102 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
   void _scrollToSelectedDate() {
     double screenWidth = MediaQuery.of(context).size.width;
     double tileWidth = screenWidth / 5;
-
     int daysDifference = _selectedDate
-        .difference(DateTime.now().subtract(Duration(days: 2)))
+        .difference(DateTime.now().subtract(const Duration(days: 2)))
         .inDays;
     double scrollOffset = daysDifference * tileWidth;
-
     _scrollController.animateTo(scrollOffset,
-        duration: Duration(milliseconds: 300), curve: Curves.ease);
+        duration: const Duration(milliseconds: 300), curve: Curves.ease);
+  }
+
+  Future<void> _fetchTasks() async {
+    try {
+      final apiHandler = APIHandler();
+      final tasks = await apiHandler.getTasks(widget.currentUser.userId!);
+      setState(() => _tasks = tasks);
+    } catch (e) {
+      print('Error fetching tasks: $e');
+      const snackbarInterval = Duration(minutes: 5);
+      final now = DateTime.now();
+      if (lastSnackbarTime == null ||
+          now.difference(lastSnackbarTime!) > snackbarInterval) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('${AppLocalizations.of(context)!.calendarError}$e')));
+        lastSnackbarTime = now;
+      }
+    }
+  }
+
+  Color _getTaskColor(int taskId, bool isCompleted) {
+    if (isCompleted) {
+      return Colors.grey;
+    } else if (_taskColors.containsKey(taskId)) {
+      return _taskColors[taskId]!;
+    } else {
+      Random random = Random();
+      int randomIndex;
+      do {
+        randomIndex = random.nextInt(_availableColors.length);
+      } while (_availableColors[randomIndex] == Colors.white ||
+          _availableColors[randomIndex] == Colors.black ||
+          _availableColors[randomIndex] == Colors.grey);
+      Color newColor = _availableColors[randomIndex];
+      _taskColors[taskId] = newColor;
+      return newColor;
+    }
+  }
+
+  Future<void> _completeTask(Task task) async {
+    try {
+      final apiHandler = APIHandler();
+      Task updatedTask = task.copyWith(isCompleted: 1);
+      final response = await apiHandler.updateTaskStatus(task.id!, updatedTask);
+      if (response.statusCode == 204) {
+        _fetchTasks();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.of(context)!.calendarTaskComplete)));
+        Navigator.of(context).pop();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                '${AppLocalizations.of(context)!.calendarTaskUpdateFail}${response.data}')));
+      }
+    } catch (e) {
+      print('Error completing task: $e');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              '${AppLocalizations.of(context)!.calendarTaskCompleteError}$e')));
+    }
+  }
+
+  Future<void> _deleteTask(int taskId) async {
+    try {
+      final apiHandler = APIHandler();
+      final response = await apiHandler.deleteTask(taskId);
+      if (response.statusCode == 204) {
+        _fetchTasks();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.of(context)!.calendarTaskDelete)));
+        Navigator.of(context).pop();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                '${AppLocalizations.of(context)!.calendarTaskDeleteFail}${response.data}')));
+      }
+    } catch (e) {
+      print('Error deleting task: $e');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              '${AppLocalizations.of(context)!.calendarTaskDeleteError}$e')));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final primaryClr = Color(0xFF90CAF9);
-    String todayDate = DateFormat('MMMM dd, yyyy').format(DateTime.now());
+    final primaryClr = const Color(0xFF90CAF9);
+    String todayDate =
+        DateFormat(AppLocalizations.of(context)!.calendarDateFormat)
+            .format(DateTime.now());
 
     return Scaffold(
       appBar: AppBar(
@@ -67,27 +176,30 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Today",
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                Text(todayDate, style: TextStyle(fontSize: 18)),
+                Text(AppLocalizations.of(context)!.calendarTodayTitle,
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(todayDate, style: const TextStyle(fontSize: 18)),
               ],
             ),
             TextButton(
               style: TextButton.styleFrom(
-                  backgroundColor: primaryClr,
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20))),
+                backgroundColor: primaryClr,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+              ),
               onPressed: () {
                 Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) =>
-                          AddTaskScreen(currentUser: widget.currentUser)),
-                );
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) =>
+                            AddTaskScreen(currentUser: widget.currentUser)));
               },
-              child: Text('+ Add Task', style: TextStyle(color: Colors.white)),
+              child: Text(
+                  '${AppLocalizations.of(context)!.add} ${AppLocalizations.of(context)!.addTaskTitle}',
+                  style: const TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -101,16 +213,18 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
             child: ListView.builder(
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               itemBuilder: (context, index) {
                 DateTime date = DateTime.now()
-                    .subtract(Duration(days: 2))
+                    .subtract(const Duration(days: 2))
                     .add(Duration(days: index));
                 return _buildDateTile(date, primaryClr, context);
               },
               itemCount: 365 * 10,
             ),
           ),
+          const SizedBox(height: 16),
+          Expanded(child: _buildTaskList()),
         ],
       ),
     );
@@ -123,17 +237,15 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
     double tileWidth = MediaQuery.of(context).size.width / 5;
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedDate = date;
-          _scrollToSelectedDate();
-        });
-      },
+      onTap: () => setState(() {
+        _selectedDate = date;
+        _scrollToSelectedDate();
+      }),
       child: SizedBox(
         width: tileWidth,
         height: 110,
         child: Container(
-          margin: EdgeInsets.symmetric(horizontal: 2),
+          margin: const EdgeInsets.symmetric(horizontal: 2),
           decoration: BoxDecoration(
             color: isSelected ? primaryClr : null,
             borderRadius: BorderRadius.circular(8),
@@ -159,5 +271,85 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildTaskList() {
+    List<Task> filteredTasks = _tasks.where((task) {
+      if (task.date == null) return false;
+      DateTime taskDate = DateFormat('yyyy-MM-dd').parse(task.date!);
+      return taskDate.year == _selectedDate.year &&
+          taskDate.month == _selectedDate.month &&
+          taskDate.day == _selectedDate.day;
+    }).toList();
+
+    if (filteredTasks.isEmpty) {
+      return Center(child: Text(AppLocalizations.of(context)!.calendarNoTask));
+    } else {
+      return ListView.builder(
+        itemCount: filteredTasks.length,
+        itemBuilder: (context, index) {
+          final task = filteredTasks[index];
+          Color taskColor = _getTaskColor(task.id!, task.isCompleted == 1);
+          return GestureDetector(
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title:
+                      Text(AppLocalizations.of(context)!.calendarTaskOptions),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () => _completeTask(task),
+                        child: Text(AppLocalizations.of(context)!
+                            .calendarTaskMarkComplete),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => _deleteTask(task.id!),
+                        child: Text(AppLocalizations.of(context)!
+                            .calendarTaskDeleteButton),
+                      ),
+                    ],
+                  ),
+                  actions: <Widget>[
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(AppLocalizations.of(context)!.calendarClose),
+                    ),
+                  ],
+                ),
+              );
+            },
+            child: Card(
+              margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              color: taskColor,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(task.title ?? AppLocalizations.of(context)!.noTitle,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time),
+                        const SizedBox(width: 4),
+                        Text(
+                            '${task.startTime ?? AppLocalizations.of(context)!.notApplicable} - ${task.endTime ?? AppLocalizations.of(context)!.notApplicable}'),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(task.note ?? AppLocalizations.of(context)!.noNote),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    }
   }
 }

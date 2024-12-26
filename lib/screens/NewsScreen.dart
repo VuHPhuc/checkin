@@ -36,6 +36,12 @@ class _NewsScreenState extends State<NewsScreen> {
 
         String title = titleElement?.text.trim() ?? '';
         String link = titleElement?.attributes['href'] ?? '';
+
+        // Kiểm tra xem link đã là URL đầy đủ chưa
+        if (!link.startsWith('http://') && !link.startsWith('https://')) {
+          link = 'https://hau.edu.vn$link';
+        }
+
         String imageUrl = imageUrlElement?.attributes['src'] != null
             ? 'https://hau.edu.vn${imageUrlElement?.attributes['src']}'
             : '';
@@ -48,11 +54,22 @@ class _NewsScreenState extends State<NewsScreen> {
           'date': date,
         });
       }
-
       return newsData;
     } else {
       throw Exception('Failed to load data');
     }
+  }
+
+  Future<void> _launchUrl(String url) async {
+    if (url.isEmpty) {
+      // Xử lý trường hợp link không hợp lệ, ví dụ hiển thị thông báo lỗi
+      return;
+    }
+    final encodedUrl = Uri.encodeFull(url);
+    final uri = Uri.parse(encodedUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {}
   }
 
   @override
@@ -77,8 +94,12 @@ class _NewsScreenState extends State<NewsScreen> {
 
                 return GestureDetector(
                   onTap: () {
-                    if (item['link'] != null) {
-                      launchUrl(Uri.parse(item['link']!));
+                    if (item['link'] != null && item['link']!.isNotEmpty) {
+                      _launchUrl(item['link']!);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Không có link')),
+                      );
                     }
                   },
                   child: Card(

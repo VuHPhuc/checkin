@@ -1,6 +1,1 @@
-{
-  "ko": [
-    "checkinYourLocation",
-    "checkinViewHistory"
-  ]
-}
+{}

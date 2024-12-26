@@ -13,7 +13,7 @@ import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
 
 class APIHandler {
-  final String baseUrl = 'http://192.168.0.120:5176/api';
+  final String baseUrl = 'http://172.28.22.153:5176/api';
   final Dio dio = Dio();
 
   // Get user from SQL Server
@@ -466,13 +466,65 @@ class APIHandler {
     try {
       final response = await dio.post(
         '$baseUrl/task',
-        data: task.toJson(),
+        data: jsonEncode(task.toJson()),
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      );
+
+      if (response.statusCode == 201) {
+        return response; // Return the entire response
+      } else {
+        print('Failed to create task: ${response.statusCode} ${response.data}');
+        throw Exception(
+            'Failed to create task: ${response.statusCode} ${response.data}');
+      }
+    } catch (e) {
+      print('Error creating task: $e');
+      rethrow; // Re-throw the caught exception
+    }
+  }
+
+  Future<List<Task>> getTasks(int userId) async {
+    // Removed date parameter
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/task?userId=$userId'), // URL only filters by userId
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((taskJson) => Task.fromJson(taskJson)).toList();
+      } else {
+        print('Error fetching Tasks ${response.statusCode}');
+        throw Exception('Failed to load tasks');
+      }
+    } catch (e) {
+      print('Error fetching tasks: $e');
+      throw Exception('Failed to load tasks $e');
+    }
+  }
+
+  Future<Response> updateTaskStatus(int taskId, Task task) async {
+    try {
+      final response = await dio.put(
+        '$baseUrl/task/$taskId',
+        data: jsonEncode(task.toJson()),
         options: Options(headers: {'Content-Type': 'application/json'}),
       );
       return response;
     } catch (e) {
-      print('API call error inserting task: $e');
-      rethrow; // Re-throw the error to be handled by the caller
+      print('Error updating task status: $e');
+      rethrow;
+    }
+  }
+
+  Future<Response> deleteTask(int taskId) async {
+    try {
+      final response = await dio.delete('$baseUrl/task/$taskId');
+      return response;
+    } catch (e) {
+      print('Error deleting task: $e');
+      rethrow;
     }
   }
 }

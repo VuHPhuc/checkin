@@ -7,7 +7,6 @@ class Task {
   String? date;
   String? startTime;
   String? endTime;
-  int? color;
   int? remind;
   String? repeat;
 
@@ -20,12 +19,36 @@ class Task {
     this.date,
     this.startTime,
     this.endTime,
-    this.color,
     this.remind,
     this.repeat,
   });
 
-  // fromJson and toJson for converting to/from maps
+  Task copyWith({
+    int? id,
+    int? userId,
+    String? title,
+    String? note,
+    int? isCompleted,
+    String? date,
+    String? startTime,
+    String? endTime,
+    int? remind,
+    String? repeat,
+  }) {
+    return Task(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      title: title ?? this.title,
+      note: note ?? this.note,
+      isCompleted: isCompleted ?? this.isCompleted,
+      date: date ?? this.date,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      remind: remind ?? this.remind,
+      repeat: repeat ?? this.repeat,
+    );
+  }
+
   factory Task.fromJson(Map<String, dynamic> json) => Task(
         id: json['id'],
         userId: json['userId'],
@@ -35,10 +58,10 @@ class Task {
         date: json['date'],
         startTime: json['startTime'],
         endTime: json['endTime'],
-        color: json['color'],
         remind: json['remind'],
         repeat: json['repeat'],
       );
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'userId': userId,
@@ -48,7 +71,6 @@ class Task {
         'date': date,
         'startTime': startTime,
         'endTime': endTime,
-        'color': color,
         'remind': remind,
         'repeat': repeat,
       };

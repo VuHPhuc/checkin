@@ -488,7 +488,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       _isImageCaptured
                           ? AppLocalizations.of(context)!.checkinPressToCheckIn
                           : AppLocalizations.of(context)!
-                              .checkinTakePictureAndCheckWifi,
+                              .checkinTakePictureAndCheckLocation,
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -576,7 +576,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                       _isImageCaptured
                           ? AppLocalizations.of(context)!.checkinPressToCheckOut
                           : AppLocalizations.of(context)!
-                              .checkinTakePictureAndCheckWifi,
+                              .checkinTakePictureAndCheckLocation,
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,

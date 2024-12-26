@@ -1,9 +1,8 @@
-import 'package:checkin/screens/LoginScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart' as html_parser;
 import 'package:url_launcher/url_launcher.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:checkin/screens/LoginScreen.dart';
 
 class GuestNewsScreen extends StatefulWidget {
   const GuestNewsScreen({super.key});
@@ -38,6 +37,11 @@ class _GuestNewsScreenState extends State<GuestNewsScreen> {
 
         String title = titleElement?.text.trim() ?? '';
         String link = titleElement?.attributes['href'] ?? '';
+
+        if (!link.startsWith('http://') && !link.startsWith('https://')) {
+          link = 'https://hau.edu.vn$link';
+        }
+
         String imageUrl = imageUrlElement?.attributes['src'] != null
             ? 'https://hau.edu.vn${imageUrlElement?.attributes['src']}'
             : '';
@@ -57,6 +61,17 @@ class _GuestNewsScreenState extends State<GuestNewsScreen> {
     }
   }
 
+  Future<void> _launchUrl(String url) async {
+    if (url.isEmpty) {
+      return;
+    }
+    final encodedUrl = Uri.encodeFull(url);
+    final uri = Uri.parse(encodedUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,9 +87,7 @@ class _GuestNewsScreenState extends State<GuestNewsScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => LoginScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => LoginScreen()),
               );
             },
           ),
@@ -93,8 +106,12 @@ class _GuestNewsScreenState extends State<GuestNewsScreen> {
 
                 return GestureDetector(
                   onTap: () {
-                    if (item['link'] != null) {
-                      launchUrl(Uri.parse(item['link']!));
+                    if (item['link'] != null && item['link']!.isNotEmpty) {
+                      _launchUrl(item['link']!);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Không có link')),
+                      );
                     }
                   },
                   child: Card(
@@ -113,10 +130,8 @@ class _GuestNewsScreenState extends State<GuestNewsScreen> {
                             item['imageUrl']!,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
-                                Image.asset(
-                              'assets/img/Hau.png',
-                              fit: BoxFit.cover,
-                            ),
+                                Image.asset('assets/img/Hau.png',
+                                    fit: BoxFit.cover),
                           ),
                         ),
                         Padding(
@@ -124,18 +139,13 @@ class _GuestNewsScreenState extends State<GuestNewsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                item['title'] ?? '',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                ),
-                              ),
+                              Text(item['title'] ?? '',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18)),
                               const SizedBox(height: 8),
-                              Text(
-                                item['date'] ?? '',
-                                style: const TextStyle(fontSize: 14),
-                              ),
+                              Text(item['date'] ?? '',
+                                  style: const TextStyle(fontSize: 14)),
                             ],
                           ),
                         ),
@@ -146,13 +156,9 @@ class _GuestNewsScreenState extends State<GuestNewsScreen> {
               },
             );
           } else if (snapshot.hasError) {
-            return Center(
-              child: Text('Error: ${snapshot.error}'),
-            );
+            return Center(child: Text('Error: ${snapshot.error}'));
           } else {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
         },
       ),
