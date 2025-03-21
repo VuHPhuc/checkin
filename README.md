@@ -22,6 +22,5 @@ This is a new Flutter project.
 
 **WIP**  
 
-*  Reminder Screen  
-*  Admin website    
+*  Done will add if there any ideal come in mind        
 
