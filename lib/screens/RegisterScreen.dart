@@ -15,6 +15,7 @@ import 'package:path/path.dart' as path;
 import 'package:dio/dio.dart';
 
 class RegisterScreen extends StatefulWidget {
+  // Màn hình đăng ký
   const RegisterScreen({super.key});
 
   @override
@@ -22,23 +23,32 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  // Khai báo các biến trạng thái
+  final TextEditingController nameController =
+      TextEditingController(); // Controller cho trường tên
+  final TextEditingController emailController =
+      TextEditingController(); // Controller cho trường email
+  final TextEditingController passwordController =
+      TextEditingController(); // Controller cho trường mật khẩu
   final TextEditingController confirmPasswordController =
-      TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
+      TextEditingController(); // Controller cho trường xác nhận mật khẩu
+  final TextEditingController phoneController =
+      TextEditingController(); // Controller cho trường số điện thoại
 
-  String? _nameErrorText;
-  String? _emailErrorText;
-  String? _passwordErrorText;
-  String? _confirmPasswordErrorText;
-  String? _phoneErrorText;
+  String? _nameErrorText; // Biến để hiển thị lỗi cho trường tên
+  String? _emailErrorText; // Biến để hiển thị lỗi cho trường email
+  String? _passwordErrorText; // Biến để hiển thị lỗi cho trường mật khẩu
+  String?
+      _confirmPasswordErrorText; // Biến để hiển thị lỗi cho trường xác nhận mật khẩu
+  String? _phoneErrorText; // Biến để hiển thị lỗi cho trường số điện thoại
 
-  final Color primaryColor = const Color.fromARGB(252, 56, 242, 255);
-  final APIHandler _apiHandler = APIHandler();
+  final Color primaryColor =
+      const Color.fromARGB(252, 56, 242, 255); // Màu chủ đạo
+  final APIHandler _apiHandler =
+      APIHandler(); // Đối tượng APIHandler để tương tác với API
 
   String? validateEmail(String? value) {
+    // Hàm kiểm tra định dạng email
     const pattern = r"(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'"
         r'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-'
         r'\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*'
@@ -50,16 +60,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     return value!.isNotEmpty && !regex.hasMatch(value)
         ? AppLocalizations.of(context)!.loginInvalidEmail
-        : null;
+        : null; // Nếu email không đúng định dạng trả về thông báo lỗi
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
+    // Hàm build giao diện người dùng
+    final screenHeight =
+        MediaQuery.of(context).size.height; // Lấy chiều cao màn hình
+    final screenWidth =
+        MediaQuery.of(context).size.width; // Lấy chiều rộng màn hình
 
     return Scaffold(
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset:
+          true, // Cho phép màn hình cuộn khi bàn phím hiện lên
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -92,7 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                     ),
-                  ),
+                  ), // Phần hiển thị logo và background trên cùng
             Container(
               margin: EdgeInsets.only(
                 top: screenHeight / 30,
@@ -104,7 +118,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   // Back Button
                   GestureDetector(
                     onTap: () {
-                      Navigator.pop(context);
+                      Navigator.pop(context); // Quay lại màn hình trước
                     },
                     child: Container(
                       height: 40,
@@ -121,71 +135,76 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                     ),
-                  ),
+                  ), // Nút quay lại
                   const SizedBox(width: 16),
-
                   Text(
-                    AppLocalizations.of(context)!.registerTitle,
+                    AppLocalizations.of(context)!
+                        .registerTitle, // Hiển thị tiêu đề
                     style: TextStyle(fontSize: screenWidth / 15),
                   ),
                 ],
               ),
-            ),
+            ), // Phần hiển thị tiêu đề màn hình và nút quay lại
             GestureDetector(
               onTap: () async {
-                FocusScope.of(context).unfocus();
-                final String name = nameController.text.trim();
-                final String email = emailController.text.trim();
-                final String password = passwordController.text.trim();
-                final String confirmPassword =
-                    confirmPasswordController.text.trim();
-                final String phone = phoneController.text.trim();
+                // Hàm xử lý khi người dùng nhấn nút đăng ký
+                FocusScope.of(context).unfocus(); // Đóng bàn phím
+                final String name = nameController.text.trim(); // Lấy tên
+                final String email = emailController.text.trim(); // Lấy email
+                final String password =
+                    passwordController.text.trim(); // Lấy mật khẩu
+                final String confirmPassword = confirmPasswordController.text
+                    .trim(); // Lấy mật khẩu xác nhận
+                final String phone =
+                    phoneController.text.trim(); // Lấy số điện thoại
 
                 if (name.isEmpty) {
                   setState(() {
-                    _nameErrorText =
-                        AppLocalizations.of(context)!.registerNameEmpty;
+                    _nameErrorText = AppLocalizations.of(context)!
+                        .registerNameEmpty; // Nếu tên rỗng trả về thông báo lỗi
                   });
                 } else {
-                  _nameErrorText = null;
+                  _nameErrorText = null; // Nếu có dữ liệu thì không có lỗi
                 }
                 if (email.isEmpty) {
                   setState(() {
-                    _emailErrorText =
-                        AppLocalizations.of(context)!.registerEmailEmpty;
+                    _emailErrorText = AppLocalizations.of(context)!
+                        .registerEmailEmpty; // Nếu email rỗng trả về thông báo lỗi
                   });
                 } else {
-                  _emailErrorText = validateEmail(email);
+                  _emailErrorText =
+                      validateEmail(email); // Kiểm tra định dạng email
                 }
                 if (password.isEmpty) {
                   setState(() {
-                    _passwordErrorText =
-                        AppLocalizations.of(context)!.registerPasswordEmpty;
+                    _passwordErrorText = AppLocalizations.of(context)!
+                        .registerPasswordEmpty; // Nếu mật khẩu rỗng trả về thông báo lỗi
                   });
                 } else {
-                  _passwordErrorText = null;
+                  _passwordErrorText = null; // Nếu có dữ liệu thì không có lỗi
                 }
                 if (confirmPassword.isEmpty) {
                   setState(() {
                     _confirmPasswordErrorText = AppLocalizations.of(context)!
-                        .registerConfirmPasswordEmpty;
+                        .registerConfirmPasswordEmpty; // Nếu mật khẩu xác nhận rỗng trả về thông báo lỗi
                   });
                 } else {
-                  _confirmPasswordErrorText = null;
+                  _confirmPasswordErrorText =
+                      null; // Nếu có dữ liệu thì không có lỗi
                 }
                 if (password != confirmPassword) {
                   setState(() {
-                    _confirmPasswordErrorText =
-                        AppLocalizations.of(context)!.registerPasswordMismatch;
+                    _confirmPasswordErrorText = AppLocalizations.of(context)!
+                        .registerPasswordMismatch; // Nếu mật khẩu không trùng nhau trả về thông báo lỗi
                   });
                 }
                 if (phone.isEmpty) {
                   setState(() {
-                    _phoneErrorText =
-                        AppLocalizations.of(context)!.registerPhoneEmpty;
+                    _phoneErrorText = AppLocalizations.of(context)!
+                        .registerPhoneEmpty; // Nếu số điện thoại rỗng trả về thông báo lỗi
                   });
                 } else {
-                  _phoneErrorText = null;
+                  _phoneErrorText = null; // Nếu có dữ liệu thì không có lỗi
                 }
 
                 if (_nameErrorText == null &&
@@ -193,6 +212,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     _passwordErrorText == null &&
                     _confirmPasswordErrorText == null &&
                     _phoneErrorText == null) {
+                  // Nếu không có lỗi
                   try {
                     User newUser = User(
                       userId: 0,
@@ -203,22 +223,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       address: "",
                       avatar: "",
                       avatarLocation: "",
-                    );
+                      isAdmin: 0,
+                    ); // Tạo mới đối tượng user
 
                     // Register user with the updated avatarLocation
-                    bool success = await _apiHandler.registerUser(newUser);
+                    bool success = await _apiHandler
+                        .registerUser(newUser); // Gọi API để đăng ký
                     if (success) {
+                      // Nếu đăng ký thành công
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(
-                              AppLocalizations.of(context)!.registerSuccess),
+                          content: Text(AppLocalizations.of(context)!
+                              .registerSuccess), // Hiển thị thông báo thành công
                           backgroundColor: Colors.green,
                         ),
                       );
 
                       // Save login information
-                      SharedPreferences prefs =
-                          await SharedPreferences.getInstance();
+                      SharedPreferences prefs = await SharedPreferences
+                          .getInstance(); // Lưu thông tin đăng nhập vào SharedPreferences
                       await prefs.setString('EmployeeEmail', email);
                       await prefs.setString('EmployeePassword', password);
                       await prefs.setInt('UserId', newUser.userId);
@@ -233,27 +256,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => HomeScreen(
-                            currentUser:
-                                newUser, // Pass the User object to HomeScreen
+                            currentUser: newUser, // Chuyển sang màn hình home
                           ),
                         ),
                       );
                     } else {
+                      // Nếu đăng ký thất bại
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            AppLocalizations.of(context)!.registerFailed,
+                            AppLocalizations.of(context)!
+                                .registerFailed, // Hiển thị thông báo thất bại
                           ),
                           backgroundColor: Colors.red,
                         ),
                       );
                     }
                   } catch (e) {
+                    // Nếu có lỗi
                     print(e.toString());
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          AppLocalizations.of(context)!.registerError,
+                          AppLocalizations.of(context)!
+                              .registerError, // Hiển thị thông báo lỗi
                         ),
                         backgroundColor: Colors.red,
                       ),
@@ -268,31 +294,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   children: [
                     customField(
-                        AppLocalizations.of(context)!.registerEnterName,
+                        AppLocalizations.of(context)!
+                            .registerEnterName, // Hiển thị trường nhập tên
                         nameController,
                         false,
                         _nameErrorText,
                         FontAwesomeIcons.user),
                     customField(
-                        AppLocalizations.of(context)!.registerEnterEmail,
+                        AppLocalizations.of(context)!
+                            .registerEnterEmail, // Hiển thị trường nhập email
                         emailController,
                         false,
                         _emailErrorText,
                         FontAwesomeIcons.envelope),
                     customField(
-                        AppLocalizations.of(context)!.registerEnterPassword,
+                        AppLocalizations.of(context)!
+                            .registerEnterPassword, // Hiển thị trường nhập mật khẩu
                         passwordController,
                         true,
                         _passwordErrorText,
                         FontAwesomeIcons.key),
                     customField(
-                        AppLocalizations.of(context)!.registerConfirmPassword,
+                        AppLocalizations.of(context)!
+                            .registerConfirmPassword, // Hiển thị trường xác nhận mật khẩu
                         confirmPasswordController,
                         true,
                         _confirmPasswordErrorText,
                         FontAwesomeIcons.key),
                     customField(
-                        AppLocalizations.of(context)!.registerEnterPhone,
+                        AppLocalizations.of(context)!
+                            .registerEnterPhone, // Hiển thị trường nhập số điện thoại
                         phoneController,
                         false,
                         _phoneErrorText,
@@ -308,7 +339,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       child: Center(
                         child: Text(
-                          AppLocalizations.of(context)!.registerRegister,
+                          AppLocalizations.of(context)!
+                              .registerRegister, // Hiển thị nút đăng ký
                           style: TextStyle(
                             fontSize: MediaQuery.of(context).size.width / 20,
                             color: Colors.white,
@@ -319,7 +351,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                 ),
               ),
-            ),
+            ), // Phần hiển thị các trường nhập liệu và nút đăng ký
           ],
         ),
       ),
@@ -328,6 +360,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget customField(String hint, TextEditingController controller,
       bool obscure, String? errorText, IconData iconData) {
+    // Hàm xây dựng một trường nhập liệu tùy chỉnh
     return GestureDetector(
       onTap: () {},
       child: Container(
@@ -356,7 +389,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   size: MediaQuery.of(context).size.width / 10,
                 ),
               ),
-            ),
+            ), // Icon ở đầu trường nhập liệu
             Expanded(
               child: TextFormField(
                 controller: controller,
@@ -374,7 +407,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 maxLines: 1,
                 obscureText: obscure,
               ),
-            ),
+            ), // Trường nhập liệu
           ],
         ),
       ),

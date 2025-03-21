@@ -90,11 +90,10 @@ class APIHandler {
   }
 
   // **Sửa đổi API để lọc dữ liệu theo userId**
-  Future<List<Records>> getUserRecords(int userId, DateTime date) async {
+  Future<List<Records>> getUserRecords(int userId) async {
     try {
       // Tạo URL API với userId và date
-      final apiUrl =
-          '$baseUrl/records?userId=$userId&date=${date.year}-${date.month}';
+      final apiUrl = '$baseUrl/records';
 
       final response = await http.get(
         Uri.parse(apiUrl),
@@ -487,7 +486,7 @@ class APIHandler {
     // Removed date parameter
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/task?userId=$userId'), // URL only filters by userId
+        Uri.parse('$baseUrl/task'),
         headers: {'Content-Type': 'application/json'},
       );
 

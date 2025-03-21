@@ -17,71 +17,92 @@ import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
 
 class UsersScreen extends StatefulWidget {
+  // Màn hình thông tin người dùng
   const UsersScreen({super.key, required this.currentUser});
 
-  final User currentUser;
+  final User currentUser; // Người dùng hiện tại
 
   @override
   State<UsersScreen> createState() => _UsersScreenState();
 }
 
 class _UsersScreenState extends State<UsersScreen> {
-  double screenHeight = 0;
-  double screenWidth = 0;
+  // Khai báo các biến trạng thái
+  double screenHeight = 0; // Chiều cao màn hình
+  double screenWidth = 0; // Chiều rộng màn hình
 
-  final Color primaryColor = const Color.fromARGB(253, 239, 68, 76);
+  final Color primaryColor =
+      const Color.fromARGB(253, 239, 68, 76); // Màu chủ đạo
 
-  late SharedPreferences sharedPreferences;
+  late SharedPreferences
+      sharedPreferences; // Đối tượng SharedPreferences để lưu trữ dữ liệu
 
-  // Variable to store User information
-  late User _currentUser;
+  // Biến để lưu trữ thông tin người dùng
+  late User
+      _currentUser; // Người dùng hiện tại (sẽ được khởi tạo trong initState)
 
-  bool _isLoading = true; // Variable to check loading status
+  bool _isLoading =
+      true; // Variable to check loading status (Biến để kiểm tra trạng thái đang tải)
 
-  // Controllers for input fields
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
-  final TextEditingController _oldPasswordController = TextEditingController();
-  final TextEditingController _newPasswordController = TextEditingController();
+  // Các controller cho các trường nhập liệu
+  final TextEditingController _phoneController =
+      TextEditingController(); // Controller cho trường số điện thoại
+  final TextEditingController _addressController =
+      TextEditingController(); // Controller cho trường địa chỉ
+  final TextEditingController _oldPasswordController =
+      TextEditingController(); // Controller cho trường mật khẩu cũ
+  final TextEditingController _newPasswordController =
+      TextEditingController(); // Controller cho trường mật khẩu mới
   final TextEditingController _confirmPasswordController =
-      TextEditingController();
+      TextEditingController(); // Controller cho trường xác nhận mật khẩu
   final TextEditingController _passwordConfirmationController =
-      TextEditingController();
+      TextEditingController(); // Controller cho trường xác nhận mật khẩu trước khi chỉnh sửa profile
 
-  // Variables to store errors for input fields
-  String? _phoneErrorText;
-  String? _addressErrorText;
-  String? _oldPasswordErrorText;
-  String? _newPasswordErrorText;
-  String? _confirmPasswordErrorText;
-  String? _passwordConfirmationErrorText;
+  // Các biến để lưu lỗi cho các trường nhập liệu
+  String? _phoneErrorText; // Biến để hiển thị lỗi cho trường số điện thoại
+  String? _addressErrorText; // Biến để hiển thị lỗi cho trường địa chỉ
+  String? _oldPasswordErrorText; // Biến để hiển thị lỗi cho trường mật khẩu cũ
+  String? _newPasswordErrorText; // Biến để hiển thị lỗi cho trường mật khẩu mới
+  String?
+      _confirmPasswordErrorText; // Biến để hiển thị lỗi cho trường xác nhận mật khẩu
+  String?
+      _passwordConfirmationErrorText; // Biến để hiển thị lỗi cho trường xác nhận mật khẩu trước khi chỉnh sửa profile
 
-  // Initialize APIHandler
+  // Khởi tạo APIHandler
   final APIHandler _apiHandler = APIHandler();
 
-  // Variable to store selected language
-  String _selectedLanguage = 'en';
+  // Biến để lưu trữ ngôn ngữ được chọn
+  String _selectedLanguage = 'en'; // Ngôn ngữ được chọn (mặc định là tiếng Anh)
 
-  // State variables for image handling
-  File? _selectedImage;
-  bool _isLoadingImage = false;
-  final ImagePicker _picker = ImagePicker();
+  // Các biến trạng thái để xử lý hình ảnh
+  File? _selectedImage; // Biến để lưu trữ hình ảnh đã chọn
+  bool _isLoadingImage = false; // Biến để kiểm tra trạng thái đang tải ảnh lên
+  final ImagePicker _picker =
+      ImagePicker(); // Đối tượng ImagePicker để chọn hình ảnh
 
-  // Function to change the language
+  // Hàm thay đổi ngôn ngữ
   void _changeLanguage(String? language) {
     if (language != null) {
       setState(() {
-        _selectedLanguage = language; // Update selected language
+        _selectedLanguage = language; // Cập nhật ngôn ngữ được chọn
       });
-      // Save the language to SharedPreferences
+      // Lưu ngôn ngữ vào SharedPreferences
       _saveLanguageToPrefs(language);
-      // Update the locale
+      // Cập nhật locale
       Locale newLocale = Locale(language);
       MyApp.setLocale(context, newLocale);
+
+      if (language == 'ko') {
+        print('flutter: korean');
+      } else if (language == 'en') {
+        print('flutter: english');
+      } else if (language == 'vi') {
+        print('flutter: vietnamese');
+      }
     }
   }
 
-  // Function to save language to SharedPreferences
+  // Hàm lưu ngôn ngữ vào SharedPreferences
   Future<void> _saveLanguageToPrefs(String language) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('languageCode', language);
@@ -89,14 +110,15 @@ class _UsersScreenState extends State<UsersScreen> {
 
   @override
   void initState() {
+    // Hàm initState được gọi khi widget được khởi tạo
     super.initState();
     // Gán giá trị cho _currentUser
     _currentUser = widget.currentUser;
-    // Call the _loadUserData function to get the user data from SharedPreferences
+    // Gọi hàm _loadUserData để lấy dữ liệu người dùng từ SharedPreferences
     _loadUserData();
   }
 
-  // Load user data from SharedPreferences and update UI
+  // Tải dữ liệu người dùng từ SharedPreferences và cập nhật giao diện
   Future<User> _loadUserData() async {
     sharedPreferences = await SharedPreferences.getInstance();
     String? email = sharedPreferences.getString('EmployeeEmail');
@@ -108,6 +130,7 @@ class _UsersScreenState extends State<UsersScreen> {
     String? avatar = sharedPreferences.getString('EmployeeAvatar');
     String? avatarLocation =
         sharedPreferences.getString('EmployeeAvatarLocation');
+    int? isAdmin = sharedPreferences.getInt('isAdmin') ?? 0;
 
     if (email != null &&
         name != null &&
@@ -124,14 +147,17 @@ class _UsersScreenState extends State<UsersScreen> {
         address: address ?? ' ',
         avatar: avatar,
         avatarLocation: avatarLocation ?? '',
+        isAdmin: isAdmin,
       );
-      _phoneController.text = _currentUser.phone.toString();
-      _addressController.text = _currentUser.address ?? '';
+      _phoneController.text =
+          _currentUser.phone.toString(); // Set giá trị cho trường số điện thoại
+      _addressController.text =
+          _currentUser.address ?? ''; // Set giá trị cho trường địa chỉ
 
-      // Update UI with new language
+      // Cập nhật giao diện với ngôn ngữ mới
       setState(() {
         _isLoading = false;
-        // Update _selectedLanguage after loading data
+        // Cập nhật _selectedLanguage sau khi tải dữ liệu
         _selectedLanguage = sharedPreferences.getString('languageCode') ?? 'en';
       });
     } else {
@@ -139,38 +165,41 @@ class _UsersScreenState extends State<UsersScreen> {
         _isLoading = false;
       });
     }
-    // Return the updated user data
+    // Trả về dữ liệu người dùng đã cập nhật
     return _currentUser;
   }
 
-  // Handle logout
+  // Xử lý đăng xuất
+  // Xử lý đăng xuất
   Future<void> _logout() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('UserId');
-    await prefs.remove('EmployeeEmail');
-    await prefs.remove('EmployeeName');
-    await prefs.remove('EmployeePhone');
-    await prefs.remove('EmployeeAddress');
-    await prefs.remove('EmployeePassword');
-    await prefs.remove('EmployeeAvatar');
-    await prefs.remove('EmployeeAvatarLocation');
-    // Hide key board before logout
+    // Xóa toàn bộ dữ liệu trong SharedPreferences
+    await prefs.clear();
+
+    // Ẩn bàn phím trước khi đăng xuất
     FocusScope.of(context).unfocus();
+
+    // Xóa toàn bộ stack điều hướng và chuyển về GuestNewsScreen
     Navigator.pushAndRemoveUntil(
-      // ignore: use_build_context_synchronously
       context,
       MaterialPageRoute(builder: (context) => const GuestNewsScreen()),
-      (route) => true,
-    );
+      (Route<dynamic> route) => false, // Xóa tất cả các route trước đó
+    ).then((_) {
+      // Reset hoàn toàn ứng dụng
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const GuestNewsScreen()),
+      );
+    });
   }
 
-  // Handle saving profile changes
+  // Xử lý lưu thay đổi thông tin cá nhân
   Future<void> _saveProfileChanges() async {
-    // Validate new phone number and address
+    // Kiểm tra số điện thoại và địa chỉ mới
     String? newPhone = _phoneController.text.trim();
     String? newAddress = _addressController.text.trim();
 
-    // Validate phone number
+    // Kiểm tra số điện thoại
     if (newPhone.isEmpty) {
       _showErrorMessage(AppLocalizations.of(context)!.editProfileErrorPhone);
       return;
@@ -180,17 +209,17 @@ class _UsersScreenState extends State<UsersScreen> {
       return;
     }
 
-    // Validate address
+    // Kiểm tra địa chỉ
     if (newAddress.isEmpty) {
       _showErrorMessage(AppLocalizations.of(context)!.editProfileErrorAddress);
       return;
     }
 
-    // Update user information in SharedPreferences
+    // Cập nhật thông tin người dùng trong SharedPreferences
     await sharedPreferences.setString('EmployeePhone', newPhone);
     await sharedPreferences.setString('EmployeeAddress', newAddress);
 
-    // Update user information in the _currentUser object
+    // Cập nhật thông tin người dùng trong đối tượng _currentUser
     _currentUser = _currentUser.copyWith(
       phone: int.tryParse(newPhone)!,
       address: newAddress,
@@ -206,33 +235,33 @@ class _UsersScreenState extends State<UsersScreen> {
       _showSuccessMessage(
           AppLocalizations.of(context)!.editProfileSuccessUpdate);
       Navigator.of(context).pop();
-      // Fetch latest user data and update _currentUser
-      await _loadUserData(); // Call _loadUserData when update success
+      // Lấy dữ liệu người dùng mới nhất và cập nhật _currentUser
+      await _loadUserData(); // Gọi _loadUserData khi cập nhật thành công
     } else {
       _showErrorMessage(AppLocalizations.of(context)!.editProfileErrorUpdate);
     }
   }
 
-  // Handle saving password changes
+  // Xử lý lưu thay đổi mật khẩu
   Future<void> _savePasswordChanges() async {
-    // Validate new password values
+    // Kiểm tra giá trị mật khẩu mới
     String? oldPassword = _oldPasswordController.text.trim();
     String? newPassword = _newPasswordController.text.trim();
     String? confirmPassword = _confirmPasswordController.text.trim();
 
-    // Validate old password
+    // Kiểm tra mật khẩu cũ
     if (oldPassword.isEmpty) {
       _showErrorMessage(
           AppLocalizations.of(context)!.changePasswordErrorOldPassword);
       return;
     } else if (oldPassword != _currentUser.password) {
-      // Validate against current password
+      // Kiểm tra mật khẩu cũ có khớp với mật khẩu hiện tại không
       _showErrorMessage(AppLocalizations.of(context)!
           .changePasswordErrorOldPasswordIncorrect);
       return;
     }
 
-    // Validate new password
+    // Kiểm tra mật khẩu mới
     if (newPassword.isEmpty) {
       _showErrorMessage(
           AppLocalizations.of(context)!.changePasswordErrorNewPassword);
@@ -243,7 +272,7 @@ class _UsersScreenState extends State<UsersScreen> {
       return;
     }
 
-    // Validate confirm password
+    // Kiểm tra mật khẩu xác nhận
     if (confirmPassword.isEmpty) {
       _showErrorMessage(
           AppLocalizations.of(context)!.changePasswordErrorConfirmPassword);
@@ -254,38 +283,39 @@ class _UsersScreenState extends State<UsersScreen> {
       return;
     }
 
-    bool success =
-        await _apiHandler.updateUserPassword(_currentUser.userId, newPassword);
+    bool success = await _apiHandler.updateUserPassword(
+        _currentUser.userId, newPassword); // Gọi API để cập nhật mật khẩu
 
     if (success) {
-      // Show success message and close the dialog
+      // Hiển thị thông báo thành công và đóng dialog
       _showSuccessMessage(
           // ignore: use_build_context_synchronously
           AppLocalizations.of(context)!.changePasswordSuccessUpdate);
       // ignore: use_build_context_synchronously
       Navigator.of(context).pop(); // Close the dialog
 
-      // Fetch latest user data and update _currentUser
-      await _loadUserData(); // Call _loadUserData when update success
+      // Lấy dữ liệu người dùng mới nhất và cập nhật _currentUser
+      await _loadUserData(); // Gọi _loadUserData khi cập nhật thành công
     } else {
-      // Show error message
+      // Hiển thị thông báo lỗi
       _showErrorMessage(
           // ignore: use_build_context_synchronously
           AppLocalizations.of(context)!.changePasswordErrorUpdate);
     }
 
-    // Close edit mode
+    // Đóng chế độ chỉnh sửa
     setState(() {});
   }
 
-  // Show edit profile popup
+  // Hiển thị popup chỉnh sửa thông tin cá nhân
   void _showEditProfilePopup() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(
-            AppLocalizations.of(context)!.editProfileTitle,
+            AppLocalizations.of(context)!
+                .editProfileTitle, // Hiển thị tiêu đề popup
             style: const TextStyle(
                 color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
           ),
@@ -293,16 +323,18 @@ class _UsersScreenState extends State<UsersScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextFormField(
-                controller: _phoneController,
+                controller: _phoneController, // Trường nhập số điện thoại
                 decoration: InputDecoration(
-                  labelText:
-                      AppLocalizations.of(context)!.editProfilePhoneLabel,
-                  hintText: AppLocalizations.of(context)!.editProfilePhoneHint,
-                  errorText: _phoneErrorText,
+                  labelText: AppLocalizations.of(context)!
+                      .editProfilePhoneLabel, // Hiển thị nhãn trường số điện thoại
+                  hintText: AppLocalizations.of(context)!
+                      .editProfilePhoneHint, // Hiển thị gợi ý cho trường số điện thoại
+                  errorText:
+                      _phoneErrorText, // Hiển thị lỗi cho trường số điện thoại
                 ),
                 keyboardType: TextInputType.phone,
                 onChanged: (text) {
-                  // Validate phone number as the user types
+                  // Kiểm tra số điện thoại khi người dùng nhập
                   setState(() {
                     _phoneErrorText = text.isEmpty
                         ? AppLocalizations.of(context)!.editProfileErrorPhone
@@ -315,16 +347,17 @@ class _UsersScreenState extends State<UsersScreen> {
               ),
               const SizedBox(height: 16),
               TextFormField(
-                controller: _addressController,
+                controller: _addressController, // Trường nhập địa chỉ
                 decoration: InputDecoration(
-                  labelText:
-                      AppLocalizations.of(context)!.editProfileAddressLabel,
-                  hintText:
-                      AppLocalizations.of(context)!.editProfileAddressHint,
-                  errorText: _addressErrorText,
+                  labelText: AppLocalizations.of(context)!
+                      .editProfileAddressLabel, // Hiển thị nhãn trường địa chỉ
+                  hintText: AppLocalizations.of(context)!
+                      .editProfileAddressHint, // Hiển thị gợi ý cho trường địa chỉ
+                  errorText:
+                      _addressErrorText, // Hiển thị lỗi cho trường địa chỉ
                 ),
                 onChanged: (text) {
-                  // Validate address as the user types
+                  // Kiểm tra địa chỉ khi người dùng nhập
                   setState(() {
                     _addressErrorText = text.isEmpty
                         ? AppLocalizations.of(context)!.editProfileErrorAddress
@@ -337,13 +370,15 @@ class _UsersScreenState extends State<UsersScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Đóng dialog
               },
-              child: Text(AppLocalizations.of(context)!.editProfileCancel),
+              child: Text(AppLocalizations.of(context)!
+                  .editProfileCancel), // Hiển thị nút hủy
             ),
             TextButton(
-              onPressed: _saveProfileChanges,
-              child: Text(AppLocalizations.of(context)!.editProfileSave),
+              onPressed: _saveProfileChanges, // Gọi hàm lưu thay đổi
+              child: Text(AppLocalizations.of(context)!
+                  .editProfileSave), // Hiển thị nút lưu
             ),
           ],
         );
@@ -351,14 +386,15 @@ class _UsersScreenState extends State<UsersScreen> {
     );
   }
 
-  // Show change password popup
+  // Hiển thị popup thay đổi mật khẩu
   void _showChangePasswordPopup() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(
-            AppLocalizations.of(context)!.changePasswordTitle,
+            AppLocalizations.of(context)!
+                .changePasswordTitle, // Hiển thị tiêu đề popup
             style: const TextStyle(
                 color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
           ),
@@ -366,15 +402,16 @@ class _UsersScreenState extends State<UsersScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextFormField(
-                controller: _oldPasswordController,
+                controller: _oldPasswordController, // Trường nhập mật khẩu cũ
                 decoration: InputDecoration(
                   hintText: AppLocalizations.of(context)!
-                      .changePasswordOldPasswordHint,
-                  errorText: _oldPasswordErrorText,
+                      .changePasswordOldPasswordHint, // Hiển thị gợi ý cho trường mật khẩu cũ
+                  errorText:
+                      _oldPasswordErrorText, // Hiển thị lỗi cho trường mật khẩu cũ
                 ),
                 obscureText: true,
                 onChanged: (text) {
-                  // Validate old password as the user types
+                  // Kiểm tra mật khẩu cũ khi người dùng nhập
                   setState(() {
                     _oldPasswordErrorText = text.isEmpty
                         ? AppLocalizations.of(context)!
@@ -388,15 +425,16 @@ class _UsersScreenState extends State<UsersScreen> {
               ),
               const SizedBox(height: 16),
               TextFormField(
-                controller: _newPasswordController,
+                controller: _newPasswordController, // Trường nhập mật khẩu mới
                 decoration: InputDecoration(
                   hintText: AppLocalizations.of(context)!
-                      .changePasswordNewPasswordHint,
-                  errorText: _newPasswordErrorText,
+                      .changePasswordNewPasswordHint, // Hiển thị gợi ý cho trường mật khẩu mới
+                  errorText:
+                      _newPasswordErrorText, // Hiển thị lỗi cho trường mật khẩu mới
                 ),
                 obscureText: true,
                 onChanged: (text) {
-                  // Validate new password as the user types
+                  // Kiểm tra mật khẩu mới khi người dùng nhập
                   setState(() {
                     _newPasswordErrorText = text.isEmpty
                         ? AppLocalizations.of(context)!
@@ -410,15 +448,17 @@ class _UsersScreenState extends State<UsersScreen> {
               ),
               const SizedBox(height: 16),
               TextFormField(
-                controller: _confirmPasswordController,
+                controller:
+                    _confirmPasswordController, // Trường nhập xác nhận mật khẩu
                 decoration: InputDecoration(
                   hintText: AppLocalizations.of(context)!
-                      .changePasswordConfirmPasswordHint,
-                  errorText: _confirmPasswordErrorText,
+                      .changePasswordConfirmPasswordHint, // Hiển thị gợi ý cho trường xác nhận mật khẩu
+                  errorText:
+                      _confirmPasswordErrorText, // Hiển thị lỗi cho trường xác nhận mật khẩu
                 ),
                 obscureText: true,
                 onChanged: (text) {
-                  // Validate confirm password as the user types
+                  // Kiểm tra mật khẩu xác nhận khi người dùng nhập
                   setState(() {
                     _confirmPasswordErrorText = text.isEmpty
                         ? AppLocalizations.of(context)!
@@ -435,13 +475,15 @@ class _UsersScreenState extends State<UsersScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Đóng dialog
               },
-              child: Text(AppLocalizations.of(context)!.changePasswordCancel),
+              child: Text(AppLocalizations.of(context)!
+                  .changePasswordCancel), // Hiển thị nút hủy
             ),
             TextButton(
-              onPressed: _savePasswordChanges,
-              child: Text(AppLocalizations.of(context)!.changePasswordSave),
+              onPressed: _savePasswordChanges, // Gọi hàm lưu thay đổi mật khẩu
+              child: Text(AppLocalizations.of(context)!
+                  .changePasswordSave), // Hiển thị nút lưu
             ),
           ],
         );
@@ -449,27 +491,28 @@ class _UsersScreenState extends State<UsersScreen> {
     );
   }
 
-  // Show logout confirmation popup
+  // Hiển thị popup xác nhận đăng xuất
   void _showLogoutConfirmation() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.logoutConfirmationTitle),
-          content:
-              Text(AppLocalizations.of(context)!.logoutConfirmationContent),
+          title: Text(AppLocalizations.of(context)!
+              .logoutConfirmationTitle), // Hiển thị tiêu đề popup
+          content: Text(AppLocalizations.of(context)!
+              .logoutConfirmationContent), // Hiển thị nội dung popup
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Đóng dialog
               },
-              child:
-                  Text(AppLocalizations.of(context)!.logoutConfirmationCancel),
+              child: Text(AppLocalizations.of(context)!
+                  .logoutConfirmationCancel), // Hiển thị nút hủy
             ),
             TextButton(
-              onPressed: _logout,
-              child:
-                  Text(AppLocalizations.of(context)!.logoutConfirmationLogout),
+              onPressed: _logout, // Gọi hàm đăng xuất
+              child: Text(AppLocalizations.of(context)!
+                  .logoutConfirmationLogout), // Hiển thị nút đăng xuất
             ),
           ],
         );
@@ -477,26 +520,29 @@ class _UsersScreenState extends State<UsersScreen> {
     );
   }
 
-  // Show password confirmation popup before showing edit profile popup
+  // Hiển thị popup xác nhận mật khẩu trước khi hiển thị popup chỉnh sửa thông tin cá nhân
   void _showPasswordConfirmationPopup() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.passwordConfirmationTitle),
+          title: Text(AppLocalizations.of(context)!
+              .passwordConfirmationTitle), // Hiển thị tiêu đề popup
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextFormField(
-                controller: _passwordConfirmationController,
+                controller:
+                    _passwordConfirmationController, // Trường nhập xác nhận mật khẩu
                 decoration: InputDecoration(
-                  hintText:
-                      AppLocalizations.of(context)!.passwordConfirmationHint,
-                  errorText: _passwordConfirmationErrorText,
+                  hintText: AppLocalizations.of(context)!
+                      .passwordConfirmationHint, // Hiển thị gợi ý cho trường xác nhận mật khẩu
+                  errorText:
+                      _passwordConfirmationErrorText, // Hiển thị lỗi cho trường xác nhận mật khẩu
                 ),
                 obscureText: true,
                 onChanged: (text) {
-                  // Validate confirm password as the user types
+                  // Kiểm tra mật khẩu xác nhận khi người dùng nhập
                   setState(() {
                     _passwordConfirmationErrorText = text.isEmpty
                         ? AppLocalizations.of(context)!
@@ -513,32 +559,34 @@ class _UsersScreenState extends State<UsersScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Đóng dialog
               },
-              child: Text(
-                  AppLocalizations.of(context)!.passwordConfirmationCancel),
+              child: Text(AppLocalizations.of(context)!
+                  .passwordConfirmationCancel), // Hiển thị nút hủy
             ),
             TextButton(
               onPressed: () {
-                String enteredPassword =
-                    _passwordConfirmationController.text.trim();
+                String enteredPassword = _passwordConfirmationController.text
+                    .trim(); // Lấy mật khẩu đã nhập
                 if (enteredPassword.isEmpty) {
                   _showErrorMessage(AppLocalizations.of(context)!
-                      .passwordConfirmationErrorEmpty);
+                      .passwordConfirmationErrorEmpty); // Hiển thị lỗi nếu mật khẩu rỗng
                   return;
                 } else if (enteredPassword != _currentUser.password) {
+                  // Nếu mật khẩu không đúng thì hiển thị lỗi
                   _showErrorMessage(AppLocalizations.of(context)!
                       .passwordConfirmationErrorIncorrect);
                   return;
                 } else {
-                  _passwordConfirmationErrorText = null;
-                  Navigator.of(context).pop();
-                  // Show edit profile popup after confirmation
+                  _passwordConfirmationErrorText =
+                      null; // Xóa lỗi nếu mật khẩu đúng
+                  Navigator.of(context).pop(); // Đóng dialog
+                  // Hiển thị popup chỉnh sửa thông tin cá nhân sau khi xác nhận mật khẩu
                   _showEditProfilePopup();
                 }
               },
-              child: Text(
-                  AppLocalizations.of(context)!.passwordConfirmationConfirm),
+              child: Text(AppLocalizations.of(context)!
+                  .passwordConfirmationConfirm), // Hiển thị nút xác nhận
             ),
           ],
         );
@@ -546,7 +594,7 @@ class _UsersScreenState extends State<UsersScreen> {
     );
   }
 
-  // Helper function to show error message
+  // Hàm trợ giúp hiển thị thông báo lỗi
   void _showErrorMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -556,7 +604,7 @@ class _UsersScreenState extends State<UsersScreen> {
     );
   }
 
-  // Helper function to show success message
+  // Hàm trợ giúp hiển thị thông báo thành công
   void _showSuccessMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -566,95 +614,96 @@ class _UsersScreenState extends State<UsersScreen> {
     );
   }
 
-  // Function to pick image from gallery
+  // Hàm chọn ảnh từ thư viện
   Future<void> _pickImage() async {
-    // Request storage permission
+    // Yêu cầu quyền truy cập bộ nhớ
     await Permission.storage.request();
 
-    // Choose image source (camera or gallery)
+    // Chọn nguồn ảnh (camera hoặc thư viện)
     final XFile? image = await _picker.pickImage(
-      source: ImageSource.gallery, // Choose gallery source
+      source: ImageSource.gallery, // Chọn nguồn là thư viện
     );
     if (image != null) {
       setState(() {
-        _selectedImage = File(image.path);
-        // Upload avatar right away after pick image
+        _selectedImage = File(image.path); // Lưu file ảnh đã chọn
+        // Tải ảnh lên ngay sau khi chọn ảnh
         _uploadAvatar();
       });
     }
   }
 
-  // Function to upload the selected image as avatar
+  // Hàm tải ảnh đã chọn lên làm avatar
   Future<void> _uploadAvatar() async {
     if (_selectedImage != null) {
-      // Set loading flag
+      // Đặt trạng thái đang tải
       setState(() {
         _isLoadingImage = true;
       });
       try {
-        // Rename image
+        // Đổi tên ảnh
         final filename =
             '${_currentUser.userId}_${removeSign4VietnameseString(_currentUser.name.replaceAll(' ', '_').toLowerCase())}.jpg';
 
-        // Create FormData object with the image
+        // Tạo đối tượng FormData với ảnh
         final FormData formData = FormData.fromMap({
           'file': await MultipartFile.fromFile(_selectedImage!.path,
               filename: filename),
         });
 
         final apiUrl =
-            '${_apiHandler.baseUrl}/users/avatar/${_currentUser.userId}';
+            '${_apiHandler.baseUrl}/users/avatar/${_currentUser.userId}'; // Tạo đường dẫn API
         final response = await Dio().post(
           apiUrl,
           data: formData,
           options: Options(
             headers: {'Content-Type': 'multipart/form-data'},
           ),
-        );
+        ); // Gọi API để tải ảnh lên
 
-        // Handle the response
+        // Xử lý phản hồi
         if (response.statusCode == 200) {
-          // Update the user's avatarLocation from the response
+          // Cập nhật avatarLocation của người dùng từ phản hồi
           _currentUser = _currentUser.copyWith(
               avatarLocation: response.data['url'] as String);
 
-          // Save the new avatarLocation to SharedPreferences
+          // Lưu avatarLocation mới vào SharedPreferences
           await sharedPreferences.setString(
               'EmployeeAvatarLocation', _currentUser.avatarLocation!);
 
-          // Refresh UI after saving new avatarLocation
+          // Làm mới giao diện sau khi lưu avatarLocation mới
           // _loadUserData();
           _showSuccessMessage(
               AppLocalizations.of(context)!.editProfileSuccessUpdateAvatar);
 
-          // Reset the selected image
-          // Call setState only once after successful upload
+          // Đặt lại ảnh đã chọn
+          // Chỉ gọi setState một lần sau khi tải lên thành công
           setState(() {
             _selectedImage = null;
           });
           await _loadUserData();
         } else {
-          // Handle errors during avatar upload
+          // Xử lý lỗi khi tải avatar lên
           _showErrorMessage(
               AppLocalizations.of(context)!.editProfileErrorUpdateAvatar);
         }
       } catch (e) {
-        // Handle general errors
+        // Xử lý các lỗi chung
         _showErrorMessage(
             AppLocalizations.of(context)!.editProfileErrorUpdateAvatar);
       } finally {
-        // Reset loading flag
+        // Đặt lại trạng thái đang tải
         setState(() {
           _isLoadingImage = false;
         });
       }
     } else {
-      // Handle the case where no image is selected
+      // Xử lý trường hợp không có ảnh nào được chọn
       _showErrorMessage(AppLocalizations.of(context)!.editProfileSelectImage);
     }
   }
 
   Future<void> _fetchLatestUserData() async {
+    // Hàm lấy dữ liệu người dùng mới nhất
     User? updatedUser =
         await _apiHandler.getUser(_currentUser.email, _currentUser.password);
 
@@ -667,12 +716,14 @@ class _UsersScreenState extends State<UsersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    screenHeight = MediaQuery.of(context).size.height;
-    screenWidth = MediaQuery.of(context).size.width;
+    // Hàm build giao diện người dùng
+    screenHeight = MediaQuery.of(context).size.height; // Lấy chiều cao màn hình
+    screenWidth = MediaQuery.of(context).size.width; // Lấy chiều rộng màn hình
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          AppLocalizations.of(context)!.employeeInfo,
+          AppLocalizations.of(context)!
+              .employeeInfo, // Hiển thị tiêu đề "Thông tin nhân viên"
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 22,
@@ -680,8 +731,9 @@ class _UsersScreenState extends State<UsersScreen> {
         ),
         actions: [
           IconButton(
-            onPressed: _showLogoutConfirmation,
-            icon: const Icon(Icons.logout),
+            onPressed:
+                _showLogoutConfirmation, // Gọi hàm hiển thị popup xác nhận đăng xuất
+            icon: const Icon(Icons.logout), // Hiển thị icon đăng xuất
           ),
         ],
       ),
@@ -695,13 +747,13 @@ class _UsersScreenState extends State<UsersScreen> {
               Center(
                 child: Column(
                   children: [
-                    // Display the avatar if available
+                    // Hiển thị avatar nếu có
                     if (_currentUser.avatarLocation != null &&
                         _currentUser.avatarLocation != "")
                       CircleAvatar(
                         radius: 50,
                         backgroundImage: NetworkImage(
-                          // The .substring(0, _apiHandler.baseUrl.length - 4)} will delete the api in baseUrl in apihandler
+                          // Đoạn .substring(0, _apiHandler.baseUrl.length - 4) sẽ xóa phần api trong baseUrl ở apihandler
                           '${_apiHandler.baseUrl.substring(0, _apiHandler.baseUrl.length - 4)}${_currentUser.avatarLocation!}',
                         ),
                       )
@@ -719,7 +771,7 @@ class _UsersScreenState extends State<UsersScreen> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Text(
-                        _currentUser.name,
+                        _currentUser.name, // Hiển thị tên người dùng
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.black,
@@ -737,7 +789,8 @@ class _UsersScreenState extends State<UsersScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    AppLocalizations.of(context)!.employeeId,
+                    AppLocalizations.of(context)!
+                        .employeeId, // Hiển thị nhãn "ID nhân viên"
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 17,
@@ -745,14 +798,15 @@ class _UsersScreenState extends State<UsersScreen> {
                     ),
                   ),
                   Text(
-                    '${_currentUser.userId}',
+                    '${_currentUser.userId}', // Hiển thị ID người dùng
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 17,
                     ),
                   ),
                   Text(
-                    AppLocalizations.of(context)!.employeeEmail,
+                    AppLocalizations.of(context)!
+                        .employeeEmail, // Hiển thị nhãn "Email nhân viên"
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 17,
@@ -760,11 +814,12 @@ class _UsersScreenState extends State<UsersScreen> {
                     ),
                   ),
                   Text(
-                    _currentUser.email,
+                    _currentUser.email, // Hiển thị email người dùng
                     style: const TextStyle(color: Colors.black, fontSize: 16),
                   ),
                   Text(
-                    AppLocalizations.of(context)!.employeePhone,
+                    AppLocalizations.of(context)!
+                        .employeePhone, // Hiển thị nhãn "Số điện thoại nhân viên"
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 17,
@@ -772,14 +827,15 @@ class _UsersScreenState extends State<UsersScreen> {
                     ),
                   ),
                   Text(
-                    '${_currentUser.phone}',
+                    '${_currentUser.phone}', // Hiển thị số điện thoại người dùng
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 17,
                     ),
                   ),
                   Text(
-                    AppLocalizations.of(context)!.employeeAddress,
+                    AppLocalizations.of(context)!
+                        .employeeAddress, // Hiển thị nhãn "Địa chỉ nhân viên"
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 17,
@@ -787,7 +843,7 @@ class _UsersScreenState extends State<UsersScreen> {
                     ),
                   ),
                   Text(
-                    '${_currentUser.address}',
+                    '${_currentUser.address}', // Hiển thị địa chỉ người dùng
                     style: const TextStyle(
                       color: Colors.black,
                       fontSize: 17,
@@ -824,7 +880,8 @@ class _UsersScreenState extends State<UsersScreen> {
                             Image.asset('assets/img/country_flags/VietNam.png',
                                 width: 20),
                             const SizedBox(width: 8),
-                            Text(AppLocalizations.of(context)!.viLanguage),
+                            Text(AppLocalizations.of(context)!
+                                .viLanguage), // Hiển thị ngôn ngữ tiếng Việt
                           ],
                         ),
                       ),
@@ -835,7 +892,8 @@ class _UsersScreenState extends State<UsersScreen> {
                             Image.asset('assets/img/country_flags/US.png',
                                 width: 20),
                             const SizedBox(width: 8),
-                            Text(AppLocalizations.of(context)!.enLanguage),
+                            Text(AppLocalizations.of(context)!
+                                .enLanguage), // Hiển thị ngôn ngữ tiếng Anh
                           ],
                         ),
                       ),
@@ -847,7 +905,8 @@ class _UsersScreenState extends State<UsersScreen> {
                                 'assets/img/country_flags/SouthKorea.png',
                                 width: 20),
                             const SizedBox(width: 8),
-                            Text(AppLocalizations.of(context)!.krLanguage),
+                            Text(AppLocalizations.of(context)!
+                                .krLanguage), // Hiển thị ngôn ngữ tiếng Hàn
                           ],
                         ),
                       ),
@@ -856,7 +915,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 ),
               ),
             ),
-            // Add the button to change the avatar
+            // Thêm nút để thay đổi avatar
             Center(
               child: Column(
                 children: [
@@ -864,7 +923,7 @@ class _UsersScreenState extends State<UsersScreen> {
                     width: screenWidth,
                     height: screenHeight / 15,
                     child: ElevatedButton(
-                      onPressed: _pickImage,
+                      onPressed: _pickImage, // Gọi hàm chọn ảnh khi nhấn
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                         textStyle:
@@ -872,12 +931,13 @@ class _UsersScreenState extends State<UsersScreen> {
                         padding: const EdgeInsets.all(16),
                       ),
                       child: Text(
-                        AppLocalizations.of(context)!.editProfileSelectImage,
-                        // Allow text to wrap to multiple lines if necessary
+                        AppLocalizations.of(context)!
+                            .editProfileSelectImage, // Hiển thị nút "Chọn ảnh"
+                        // Cho phép văn bản xuống dòng nếu cần
                         textAlign: TextAlign.center,
                         softWrap: true,
                         overflow: TextOverflow
-                            .ellipsis, // Display "..." if text is too long
+                            .ellipsis, // Hiển thị "..." nếu văn bản quá dài
                       ),
                     ),
                   ),
@@ -886,7 +946,8 @@ class _UsersScreenState extends State<UsersScreen> {
                     width: screenWidth,
                     height: screenHeight / 15,
                     child: ElevatedButton(
-                      onPressed: _showPasswordConfirmationPopup,
+                      onPressed:
+                          _showPasswordConfirmationPopup, // Gọi hàm hiển thị popup xác nhận mật khẩu
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.amber,
                         textStyle:
@@ -894,12 +955,13 @@ class _UsersScreenState extends State<UsersScreen> {
                         padding: const EdgeInsets.all(16),
                       ),
                       child: Text(
-                        AppLocalizations.of(context)!.editProfile,
-                        // Allow text to wrap to multiple lines if necessary
+                        AppLocalizations.of(context)!
+                            .editProfile, // Hiển thị nút "Chỉnh sửa thông tin"
+                        // Cho phép văn bản xuống dòng nếu cần
                         textAlign: TextAlign.center,
                         softWrap: true,
                         overflow: TextOverflow
-                            .ellipsis, // Display "..." if text is too long
+                            .ellipsis, // Hiển thị "..." nếu văn bản quá dài
                       ),
                     ),
                   ),
@@ -908,7 +970,8 @@ class _UsersScreenState extends State<UsersScreen> {
                     width: screenWidth,
                     height: screenHeight / 15,
                     child: ElevatedButton(
-                      onPressed: _showChangePasswordPopup,
+                      onPressed:
+                          _showChangePasswordPopup, // Gọi hàm hiển thị popup thay đổi mật khẩu
                       style: ElevatedButton.styleFrom(
                         backgroundColor:
                             const Color.fromARGB(255, 252, 136, 97),
@@ -917,10 +980,12 @@ class _UsersScreenState extends State<UsersScreen> {
                         padding: const EdgeInsets.all(16),
                       ),
                       child: Text(
-                        AppLocalizations.of(context)!.changePassword,
+                        AppLocalizations.of(context)!
+                            .changePassword, // Hiển thị nút "Thay đổi mật khẩu"
                         textAlign: TextAlign.center,
                         softWrap: true,
-                        overflow: TextOverflow.ellipsis,
+                        overflow: TextOverflow
+                            .ellipsis, // Hiển thị "..." nếu văn bản quá dài
                       ),
                     ),
                   ),
@@ -933,16 +998,17 @@ class _UsersScreenState extends State<UsersScreen> {
     );
   }
 
-  // Override didChangeDependencies to update UI when language changes
+  // Ghi đè didChangeDependencies để cập nhật giao diện khi ngôn ngữ thay đổi
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Update UI when language changes
+    // Cập nhật giao diện khi ngôn ngữ thay đổi
     _loadUserData();
   }
 
   @override
   void dispose() {
+    // Hàm dispose được gọi khi widget bị hủy
     _phoneController.dispose();
     _addressController.dispose();
     _oldPasswordController.dispose();

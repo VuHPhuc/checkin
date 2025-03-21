@@ -17,6 +17,7 @@ import 'package:checkin/services/NotificationService.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().init();
   HttpOverrides.global = MyHttpOverrides();
   tz.initializeTimeZones();
   runApp(MyApp());
@@ -114,15 +115,18 @@ class _AuthCheckState extends State<AuthCheck> {
   void _checkLoginStatus() async {
     sharedPreferences = await SharedPreferences.getInstance();
 
-    // Fetch user data from SharedPreferences
+    // Kiểm tra xem đây có phải lần chạy đầu tiên sau khi cài đặt không
+    bool isFirstRun = sharedPreferences.getBool('isFirstRun') ?? true;
+    if (isFirstRun) {
+      // Xóa toàn bộ dữ liệu SharedPreferences khi cài đặt lại
+      await sharedPreferences.clear();
+      await sharedPreferences.setBool('isFirstRun', false);
+    }
+
+    // Fetch user data từ SharedPreferences
     String? email = sharedPreferences.getString('EmployeeEmail');
     String? name = sharedPreferences.getString('EmployeeName');
     int? userId = sharedPreferences.getInt('UserId');
-    String? phone = sharedPreferences.getString('EmployeePhone');
-    String? address = sharedPreferences.getString('EmployeeAddress');
-    String? avatar = sharedPreferences.getString('EmployeeAvatar');
-    String? avatarLocation =
-        sharedPreferences.getString('EmployeeAvatarLocation');
 
     if (email != null && name != null && userId != null) {
       _currentUser = User(
@@ -130,16 +134,18 @@ class _AuthCheckState extends State<AuthCheck> {
         name: name,
         email: email,
         password: '',
-        phone: int.tryParse(phone!) ?? 0,
-        address: address ?? '',
-        avatar: avatar ?? '',
-        avatarLocation: avatarLocation ?? '',
+        phone:
+            int.tryParse(sharedPreferences.getString('EmployeePhone') ?? '0') ??
+                0,
+        address: sharedPreferences.getString('EmployeeAddress') ?? '',
+        avatar: sharedPreferences.getString('EmployeeAvatar') ?? '',
+        avatarLocation:
+            sharedPreferences.getString('EmployeeAvatarLocation') ?? '',
+        isAdmin: sharedPreferences.getInt('isAdmin') ?? 0,
       );
-      // Update the auth state with the ValueNotifier
-      _authState.value = true; // User is logged in
+      _authState.value = true; // User đã đăng nhập
     } else {
-      // Update the auth state with the ValueNotifier
-      _authState.value = false; // User is not logged in
+      _authState.value = false; // User chưa đăng nhập
     }
   }
 

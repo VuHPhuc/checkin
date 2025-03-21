@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
+  // Màn hình đăng nhập
   const LoginScreen({super.key});
 
   @override
@@ -18,22 +19,29 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passController = TextEditingController();
+  // Khai báo các biến trạng thái
+  final TextEditingController emailController =
+      TextEditingController(); // Controller cho trường email
+  final TextEditingController passController =
+      TextEditingController(); // Controller cho trường mật khẩu
 
-  String? _emailErrorText;
-  String? _passwordErrorText;
+  String? _emailErrorText; // Biến để hiển thị lỗi cho trường email
+  String? _passwordErrorText; // Biến để hiển thị lỗi cho trường mật khẩu
 
-  final Color primaryColor = const Color.fromARGB(251, 96, 244, 255);
+  final Color primaryColor =
+      const Color.fromARGB(251, 96, 244, 255); // Màu chủ đạo
 
-  late SharedPreferences sharedPreferences;
-  final APIHandler _apiHandler = APIHandler();
+  late SharedPreferences
+      sharedPreferences; // Đối tượng SharedPreferences để lưu trữ thông tin đăng nhập
+  final APIHandler _apiHandler =
+      APIHandler(); // Đối tượng APIHandler để tương tác với API
 
   // Check if the user has logged in
-  bool _isLoggedIn = false;
+  bool _isLoggedIn = false; // Biến để kiểm tra trạng thái đăng nhập
 
   // Validate email format
   String? validateEmail(String? value) {
+    // Hàm kiểm tra định dạng email
     const pattern = r"(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'"
         r'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-'
         r'\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*'
@@ -45,40 +53,54 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return value!.isNotEmpty && !regex.hasMatch(value)
         ? AppLocalizations.of(context)!.loginInvalidEmail
-        : null;
+        : null; // Nếu email không đúng định dạng trả về thông báo lỗi
   }
 
   @override
   void initState() {
+    // Hàm initState được gọi khi widget được khởi tạo
     super.initState();
-    _checkLoginStatus();
+    _checkLoginStatus(); // Kiểm tra trạng thái đăng nhập khi widget được khởi tạo
   }
 
   // Check if the user has logged in
   Future<void> _checkLoginStatus() async {
-    sharedPreferences = await SharedPreferences.getInstance();
-    String? email = sharedPreferences.getString('EmployeeEmail');
-    String? password = sharedPreferences.getString('EmployeePassword');
-    int? userId = sharedPreferences.getInt('UserId');
-    String? name = sharedPreferences.getString('EmployeeName');
-    String? avatar = sharedPreferences.getString('EmployeeAvatar');
-    String? avatarLocation =
-        sharedPreferences.getString('EmployeeAvatarLocation');
+    // Hàm kiểm tra trạng thái đăng nhập
+    sharedPreferences = await SharedPreferences
+        .getInstance(); // Lấy đối tượng SharedPreferences
+    String? email = sharedPreferences
+        .getString('EmployeeEmail'); // Lấy email từ SharedPreferences
+    String? password = sharedPreferences
+        .getString('EmployeePassword'); // Lấy mật khẩu từ SharedPreferences
+    int? userId =
+        sharedPreferences.getInt('UserId'); // Lấy userId từ SharedPreferences
+    String? name = sharedPreferences
+        .getString('EmployeeName'); // Lấy tên từ SharedPreferences
+    String? avatar = sharedPreferences
+        .getString('EmployeeAvatar'); // Lấy avatar từ SharedPreferences
+    String? avatarLocation = sharedPreferences.getString(
+        'EmployeeAvatarLocation'); // Lấy avatarLocation từ SharedPreferences
+    int? isAdmin = sharedPreferences.getInt('isAdmin') ??
+        0; // Lấy isAdmin từ SharedPreferences
 
     if (email != null && password != null && userId != null) {
       // If the user has logged in, redirect to HomeScreen
-      _isLoggedIn = true;
-      setState(() {});
+      _isLoggedIn = true; // Cập nhật trạng thái đăng nhập
+      setState(() {}); // Cập nhật lại giao diện
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
+    // Hàm build giao diện người dùng
+    final screenHeight =
+        MediaQuery.of(context).size.height; // Lấy chiều cao màn hình
+    final screenWidth =
+        MediaQuery.of(context).size.width; // Lấy chiều rộng màn hình
 
     // If the user has logged in, redirect to HomeScreen
     if (_isLoggedIn) {
+      // Nếu người dùng đã đăng nhập, chuyển sang màn hình home
       return HomeScreen(
           currentUser: User(
         userId: sharedPreferences.getInt('UserId')!,
@@ -89,6 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
         address: sharedPreferences.getString('EmployeeAddress') ?? '',
         avatar: sharedPreferences.getString('EmployeeAvatar')!,
         avatarLocation: sharedPreferences.getString('EmployeeAvatarLocation')!,
+        isAdmin: sharedPreferences.getInt('isAdmin')!,
       ));
     }
 
@@ -97,6 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
           false, // Disable automatic resizing to avoid bottom inset
       body: GestureDetector(
         onTap: () {
+          // Hàm xử lý khi người dùng nhấn vào màn hình
           FocusScope.of(context).unfocus(); // Hide keyboard on tap
         },
         child: SingleChildScrollView(
@@ -131,29 +155,31 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-                    ),
+                    ), // Phần hiển thị logo và background trên cùng
               Container(
                 margin: EdgeInsets.only(
                   top: screenHeight / 40,
                 ),
                 child: Text(
-                  AppLocalizations.of(context)!.loginWelcomeBack,
+                  AppLocalizations.of(context)!
+                      .loginWelcomeBack, // Hiển thị tiêu đề
                   style: TextStyle(
                       fontSize: screenWidth / 14, fontWeight: FontWeight.bold),
                 ),
-              ),
+              ), // Phần hiển thị tiêu đề "Welcome Back"
               Container(
                 margin: EdgeInsets.only(
                   bottom: screenHeight / 40,
                 ),
                 child: Text(
-                  AppLocalizations.of(context)!.loginLoginToAccount,
+                  AppLocalizations.of(context)!
+                      .loginLoginToAccount, // Hiển thị tiêu đề phụ
                   style: TextStyle(
                     fontSize: screenWidth / 20,
                     color: Colors.black45,
                   ),
                 ),
-              ),
+              ), // Phần hiển thị tiêu đề phụ
               Container(
                 margin: EdgeInsets.only(
                   top: screenHeight / 40,
@@ -163,7 +189,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     children: [
                       customField(
-                          AppLocalizations.of(context)!.loginEnterEmail,
+                          AppLocalizations.of(context)!
+                              .loginEnterEmail, // Hiển thị trường nhập email
                           emailController,
                           false,
                           _emailErrorText,
@@ -171,7 +198,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           primaryColor,
                           screenWidth),
                       customField(
-                          AppLocalizations.of(context)!.loginEnterPassword,
+                          AppLocalizations.of(context)!
+                              .loginEnterPassword, // Hiển thị trường nhập mật khẩu
                           passController,
                           true,
                           _passwordErrorText,
@@ -181,56 +209,65 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Login button
                       GestureDetector(
                         onTap: () async {
-                          FocusScope.of(context).unfocus();
-                          final String email = emailController.text.trim();
-                          final String password = passController.text.trim();
+                          // Hàm xử lý khi người dùng nhấn nút đăng nhập
+                          FocusScope.of(context).unfocus(); // Đóng bàn phím
+                          final String email =
+                              emailController.text.trim(); // Lấy email
+                          final String password =
+                              passController.text.trim(); // Lấy mật khẩu
 
                           if (email.isEmpty) {
                             setState(() {
-                              _emailErrorText =
-                                  AppLocalizations.of(context)!.loginEmailEmpty;
+                              _emailErrorText = AppLocalizations.of(context)!
+                                  .loginEmailEmpty; // Nếu email rỗng thì trả về thông báo lỗi
                             });
                           } else {
-                            _emailErrorText = validateEmail(email);
+                            _emailErrorText = validateEmail(
+                                email); // Kiểm tra định dạng email
                           }
 
                           if (password.isEmpty) {
                             setState(() {
                               _passwordErrorText = AppLocalizations.of(context)!
-                                  .loginPasswordEmpty;
+                                  .loginPasswordEmpty; // Nếu mật khẩu rỗng thì trả về thông báo lỗi
                             });
                           } else {
-                            _passwordErrorText = null;
+                            _passwordErrorText =
+                                null; // Nếu có dữ liệu thì không có lỗi
                           }
 
                           if (_emailErrorText == null &&
                               _passwordErrorText == null) {
+                            // Nếu không có lỗi
                             try {
                               // Validate email and password against database
-                              User? user =
-                                  await _apiHandler.getUser(email, password);
+                              User? user = await _apiHandler.getUser(
+                                  email, password); // Gọi API để đăng nhập
                               if (user != null) {
                                 // Check if email and password match database
                                 if (user.email == email &&
                                     user.password == password) {
-                                  sharedPreferences =
-                                      await SharedPreferences.getInstance();
+                                  sharedPreferences = await SharedPreferences
+                                      .getInstance(); // Lấy đối tượng SharedPreferences
                                   await sharedPreferences.setString(
-                                      'EmployeeEmail', email);
+                                      'EmployeeEmail', email); // Lưu email
                                   await sharedPreferences.setString(
                                       'EmployeePassword',
                                       password); // Save password
                                   await sharedPreferences.setString(
-                                      'EmployeeName', user.name);
+                                      'EmployeeName', user.name); // Lưu tên
                                   await sharedPreferences.setInt(
-                                      'UserId', user.userId);
+                                      'UserId', user.userId); // Lưu userId
                                   await sharedPreferences.setString(
-                                      'EmployeePhone', user.phone.toString());
+                                      'EmployeePhone',
+                                      user.phone
+                                          .toString()); // Lưu số điện thoại
                                   await sharedPreferences.setString(
                                       'EmployeeAddress',
                                       user.address ?? ''); // Lưu address
                                   await sharedPreferences.setString(
-                                      'EmployeeAvatar', user.avatar ?? '');
+                                      'EmployeeAvatar',
+                                      user.avatar ?? ''); // Lưu avatar
                                   await sharedPreferences.setString(
                                       'EmployeeAvatarLocation',
                                       user.avatarLocation ??
@@ -240,29 +277,34 @@ class _LoginScreenState extends State<LoginScreen> {
                                   Navigator.pushReplacement(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) =>
-                                          HomeScreen(currentUser: user),
+                                      builder: (context) => HomeScreen(
+                                          currentUser:
+                                              user), // Chuyển sang màn hình home
                                     ),
                                   );
                                 } else {
+                                  // Nếu mật khẩu không đúng
                                   setState(() {
-                                    _passwordErrorText =
-                                        AppLocalizations.of(context)!
-                                            .loginIncorrectPassword;
+                                    _passwordErrorText = AppLocalizations.of(
+                                            context)!
+                                        .loginIncorrectPassword; // Trả về thông báo lỗi mật khẩu không đúng
                                   });
                                 }
                               } else {
                                 setState(() {
-                                  _passwordErrorText =
-                                      AppLocalizations.of(context)!
-                                          .loginIncorrectPassword;
+                                  // Nếu không tìm thấy user
+                                  _passwordErrorText = AppLocalizations.of(
+                                          context)!
+                                      .loginIncorrectPassword; // Trả về thông báo lỗi mật khẩu không đúng
                                 });
                               }
                             } catch (e) {
+                              // Nếu có lỗi
                               print(e.toString());
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                    content: Text("Nhân Viên Không Tồn Tại")),
+                                    content: Text(
+                                        "Nhân Viên Không Tồn Tại")), // Trả về thông báo lỗi
                               );
                             }
                           }
@@ -280,7 +322,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           child: Center(
                             child: Text(
-                              AppLocalizations.of(context)!.loginLogin,
+                              AppLocalizations.of(context)!
+                                  .loginLogin, // Hiển thị nút đăng nhập
                               style: TextStyle(
                                 fontSize:
                                     MediaQuery.of(context).size.width / 20,
@@ -293,6 +336,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Register button
                       GestureDetector(
                         onTap: () {
+                          // Chuyển sang màn hình đăng ký
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -305,7 +349,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             children: [
                               TextSpan(
                                 text: AppLocalizations.of(context)!
-                                    .loginDontHaveAccount,
+                                    .loginDontHaveAccount, // Hiển thị "Don't have an account?"
                                 style: TextStyle(
                                   fontSize:
                                       MediaQuery.of(context).size.width / 20,
@@ -313,8 +357,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                               TextSpan(
-                                text:
-                                    AppLocalizations.of(context)!.loginRegister,
+                                text: AppLocalizations.of(context)!
+                                    .loginRegister, // Hiển thị "Register"
                                 style: TextStyle(
                                   fontSize:
                                       MediaQuery.of(context).size.width / 20,
@@ -326,7 +370,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         ),
-                      ),
+                      ), // Phần hiển thị nút đăng ký
                     ],
                   ),
                 ),
@@ -340,6 +384,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // Helper function to display field title
   Widget fieldTitle(String title) {
+    // Hàm hiển thị tiêu đề trường
     return GestureDetector(
       onTap: () {},
       child: Container(
@@ -361,6 +406,7 @@ class _LoginScreenState extends State<LoginScreen> {
       IconData icon,
       Color iconColor,
       double screenWidth) {
+    // Hàm xây dựng một trường nhập liệu tùy chỉnh
     return GestureDetector(
       onTap: () {},
       child: Container(
@@ -389,7 +435,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   size: MediaQuery.of(context).size.width / 10,
                 ),
               ),
-            ),
+            ), // Icon ở đầu trường nhập liệu
             Expanded(
               child: TextFormField(
                 controller: controller,
@@ -406,7 +452,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 maxLines: 1,
                 obscureText: obscure,
               ),
-            ),
+            ), // Trường nhập liệu
           ],
         ),
       ),

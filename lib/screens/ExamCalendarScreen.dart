@@ -7,6 +7,7 @@ import 'package:checkin/model/apiHandler.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:checkin/services/NotificationService.dart';
 
 class ExamCalendarScreen extends StatefulWidget {
   final User currentUser;
@@ -30,21 +31,19 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
     Colors.green,
     Colors.yellow,
     Colors.orange,
-    Colors.purple,
     Colors.pink,
     Colors.teal,
-    Colors.indigo,
-    Colors.brown,
   ];
 
   @override
   void initState() {
     super.initState();
     _fetchTasks();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      _fetchTasks();
+    });
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _scrollToSelectedDate());
-    _refreshTimer =
-        Timer.periodic(const Duration(seconds: 1), (timer) => _fetchTasks());
   }
 
   @override
@@ -82,8 +81,76 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
   Future<void> _fetchTasks() async {
     try {
       final apiHandler = APIHandler();
-      final tasks = await apiHandler.getTasks(widget.currentUser.userId!);
-      setState(() => _tasks = tasks);
+      final allTasks = await apiHandler.getTasks(widget.currentUser.userId!);
+
+      final filteredTasks = allTasks
+          .where((task) => task.userId == widget.currentUser.userId)
+          .toList();
+      setState(() {
+        _tasks = filteredTasks;
+      });
+
+      for (var task in filteredTasks) {
+        if (task.startTime != null && task.date != null) {
+          int notificationId;
+          if (task.id != null) {
+            notificationId = task.id!;
+          } else {
+            notificationId = DateTime.now().hashCode;
+            if (notificationId < 0) {
+              notificationId = -notificationId;
+            }
+          }
+          final taskDate = DateFormat('yyyy-MM-dd').parse(task.date!);
+          final taskStartTime = DateFormat('HH:mm').parse(task.startTime!);
+          DateTime scheduledStartDateTime = DateTime(
+              taskDate.year,
+              taskDate.month,
+              taskDate.day,
+              taskStartTime.hour,
+              taskStartTime.minute);
+          final now = DateTime.now();
+          if (now.year == scheduledStartDateTime.year &&
+              now.month == scheduledStartDateTime.month &&
+              now.day == scheduledStartDateTime.day &&
+              now.hour == scheduledStartDateTime.hour &&
+              now.minute == scheduledStartDateTime.minute) {
+            String title = task.title ?? 'Task Reminder';
+            String body =
+                '${task.note ?? 'No note'} \n ${task.startTime ?? 'No start time'} - ${task.endTime ?? 'No end time'}';
+            await NotificationService().showNotification(
+                id: notificationId,
+                title: title,
+                body: body,
+                remind: task.remind ?? 5);
+          }
+
+          if (task.endTime != null) {
+            final taskEndTime = DateFormat('HH:mm').parse(task.endTime!);
+            DateTime scheduledEndDateTime = DateTime(
+                taskDate.year,
+                taskDate.month,
+                taskDate.day,
+                taskEndTime.hour,
+                taskEndTime.minute);
+
+            if (now.year == scheduledEndDateTime.year &&
+                now.month == scheduledEndDateTime.month &&
+                now.day == scheduledEndDateTime.day &&
+                now.hour == scheduledEndDateTime.hour &&
+                now.minute == scheduledEndDateTime.minute) {
+              String title = task.title ?? 'Task Reminder';
+              String body =
+                  '${task.note ?? 'No note'} \n ${task.startTime ?? 'No start time'} - ${task.endTime ?? 'No end time'}';
+              await NotificationService().showNotification(
+                  id: notificationId,
+                  title: title,
+                  body: body,
+                  remind: task.remind ?? 5);
+            }
+          }
+        }
+      }
     } catch (e) {
       print('Error fetching tasks: $e');
       const snackbarInterval = Duration(minutes: 5);
@@ -305,6 +372,12 @@ class _ExamCalendarScreenState extends State<ExamCalendarScreen> {
                         child: Text(AppLocalizations.of(context)!
                             .calendarTaskMarkComplete),
                       ),
+                      // ElevatedButton(
+                      //   onPressed: () {
+                      //     //Empty for the button to still exist
+                      //   },
+                      //   child: Text("Show Test Notification"),
+                      // ),
                       ElevatedButton(
                         onPressed: () => _deleteTask(task.id!),
                         child: Text(AppLocalizations.of(context)!

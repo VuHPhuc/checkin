@@ -14,6 +14,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:dio/dio.dart';
 
 class CheckinScreen extends StatefulWidget {
+  // Màn hình check-in, nhận vào một User object
   final User currentUser;
 
   const CheckinScreen({required this.currentUser, super.key});
@@ -23,40 +24,47 @@ class CheckinScreen extends StatefulWidget {
 }
 
 class _CheckinScreenState extends State<CheckinScreen> {
-  double screenHeight = 0;
-  double screenWidth = 0;
-  String checkIn = "--/--";
-  String checkOut = "--/--";
-  final Color primaryColor = const Color.fromARGB(253, 239, 68, 76);
-  final GlobalKey key = GlobalKey();
-  File? _image;
-  bool _isImageCaptured = false;
-  final APIHandler _apiHandler = APIHandler();
-  late Records? _latestRecord;
+  // Khai báo các biến trạng thái
+  double screenHeight = 0; // Chiều cao màn hình
+  double screenWidth = 0; // Chiều rộng màn hình
+  String checkIn = "--/--"; // Thời gian check-in
+  String checkOut = "--/--"; // Thời gian check-out
+  final Color primaryColor =
+      const Color.fromARGB(253, 239, 68, 76); // Màu chủ đạo
+  final GlobalKey key = GlobalKey(); // Key toàn cục
+  File? _image; // File ảnh
+  bool _isImageCaptured = false; // Trạng thái đã chụp ảnh
+  final APIHandler _apiHandler =
+      APIHandler(); // Đối tượng APIHandler để tương tác với API
+  late Records? _latestRecord; // Bản ghi check-in/out mới nhất
 
-  final _recordStreamController = StreamController<Records?>.broadcast();
+  final _recordStreamController = StreamController<
+      Records?>.broadcast(); // Stream để cập nhật dữ liệu check-in/out
 
-  Timer? _timeUpdateTimer;
-  Timer? _recordUpdateTimer;
-  int _currentDayCheckOutCount = 0;
+  Timer? _timeUpdateTimer; // Timer cập nhật thời gian
+  Timer? _recordUpdateTimer; // Timer cập nhật bản ghi
+  int _currentDayCheckOutCount = 0; // Số lần check-out trong ngày
 
-  bool _isLoadingImage = false;
+  bool _isLoadingImage = false; // Trạng thái đang tải ảnh lên
 
   @override
   void initState() {
+    // Hàm initState được gọi khi widget được khởi tạo
     super.initState();
-    _getRecord();
+    _getRecord(); // Lấy dữ liệu bản ghi check-in/out
   }
 
   @override
   void dispose() {
-    _timeUpdateTimer?.cancel();
-    _recordUpdateTimer?.cancel();
-    _recordStreamController.close();
+    // Hàm dispose được gọi khi widget bị hủy
+    _timeUpdateTimer?.cancel(); // Hủy timer cập nhật thời gian
+    _recordUpdateTimer?.cancel(); // Hủy timer cập nhật bản ghi
+    _recordStreamController.close(); // Đóng stream controller
     super.dispose();
   }
 
   void _showErrorMessage(String message) {
+    // Hàm hiển thị thông báo lỗi
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -66,6 +74,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
   }
 
   void _showSuccessMessage(String message) {
+    // Hàm hiển thị thông báo thành công
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -75,49 +84,55 @@ class _CheckinScreenState extends State<CheckinScreen> {
   }
 
   Future _getRecord() async {
+    // Hàm lấy thông tin bản ghi check-in/out mới nhất
     try {
-      DateTime currentDate = DateTime.now();
+      DateTime currentDate = DateTime.now(); // Lấy ngày hiện tại
       _latestRecord = await _apiHandler.getLatestRecord(
-          widget.currentUser.userId, currentDate);
+          widget.currentUser.userId, currentDate); // Gọi API để lấy bản ghi
 
       if (_latestRecord != null) {
+        // Nếu có bản ghi
         setState(() {
-          checkIn = _latestRecord!.checkIn;
-          checkOut = _latestRecord!.checkOut;
+          checkIn = _latestRecord!.checkIn; // Cập nhật thời gian check-in
+          checkOut = _latestRecord!.checkOut; // Cập nhật thời gian check-out
         });
       }
 
-      _recordStreamController.add(_latestRecord);
+      _recordStreamController.add(_latestRecord); // Thêm dữ liệu vào stream
     } catch (e) {
+      // Nếu có lỗi
       setState(() {
-        checkIn = "--/--";
-        checkOut = "--/--";
+        checkIn = "--/--"; // Đặt lại thời gian check-in
+        checkOut = "--/--"; // Đặt lại thời gian check-out
       });
-      _recordStreamController.add(_latestRecord);
+      _recordStreamController.add(_latestRecord); // Thêm dữ liệu vào stream
     }
   }
 
   Future<void> _getImageFromCamera() async {
-    final picker = ImagePicker();
+    // Hàm chụp ảnh từ camera
+    final picker = ImagePicker(); // Tạo đối tượng ImagePicker
     final pickedFile = await picker.pickImage(
-      source: ImageSource.camera,
+      source: ImageSource.camera, // Nguồn ảnh là camera
       imageQuality: 25,
-    );
+    ); // Chọn ảnh từ camera
 
     if (pickedFile != null) {
-      final imageFile = File(pickedFile.path);
+      // Nếu có ảnh được chọn
+      final imageFile = File(pickedFile.path); // Tạo file từ đường dẫn ảnh
 
-      _image = imageFile;
+      _image = imageFile; // Gán file ảnh
 
       setState(() {
-        _image = _image;
-        _isImageCaptured = true;
+        _image = _image; // Cập nhật file ảnh
+        _isImageCaptured = true; // Cập nhật trạng thái đã chụp ảnh
       });
     }
   }
 
   Future<Uint8List?> resizeAndCompressImage(
       File imageFile, int maxWidth, int maxHeight) async {
+    // Hàm resize và nén ảnh
     var result = await FlutterImageCompress.compressWithFile(
       imageFile.absolute.path,
       minWidth: maxWidth,
@@ -129,64 +144,78 @@ class _CheckinScreenState extends State<CheckinScreen> {
 
   Future<String?> _uploadImageAndReturnLocation(
       File? imageFile, String type) async {
+    // Hàm tải ảnh lên server và trả về location
     if (imageFile != null) {
+      // Nếu có ảnh
       setState(() {
-        _isLoadingImage = true;
+        _isLoadingImage = true; // Đặt trạng thái đang tải ảnh lên
       });
       try {
         String filename;
         if (type == 'checkin') {
+          // Tạo tên file ảnh cho check-in
           filename =
               'checkin_${widget.currentUser.userId}_${widget.currentUser.name}_${DateTime.now().toIso8601String().replaceAll(':', '.')}.jpg';
         } else {
+          // Tạo tên file ảnh cho check-out
           filename =
               'checkout-${_currentDayCheckOutCount}_${widget.currentUser.userId}_${widget.currentUser.name}_${DateTime.now().toIso8601String().replaceAll(':', '.')}.jpg';
-          _currentDayCheckOutCount++;
+          _currentDayCheckOutCount++; // Tăng số lần check-out trong ngày
         }
 
         final FormData formData = FormData.fromMap({
-          'file':
-              await MultipartFile.fromFile(imageFile.path, filename: filename),
+          'file': await MultipartFile.fromFile(imageFile.path,
+              filename: filename), // Tạo FormData để tải file lên
         });
 
-        final apiUrl = '${_apiHandler.baseUrl}/records/location';
+        final apiUrl =
+            '${_apiHandler.baseUrl}/records/location'; // API endpoint
         final response = await Dio().post(
           apiUrl,
           data: formData,
           options: Options(
-            headers: {'Content-Type': 'multipart/form-data'},
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }, // Thiết lập header
           ),
         );
 
         if (response.statusCode == 200) {
-          _showSuccessMessage(
-              AppLocalizations.of(context)!.checkinImageUploadSuccess);
+          // Nếu tải lên thành công
+          _showSuccessMessage(AppLocalizations.of(context)!
+              .checkinImageUploadSuccess); // Hiển thị thông báo thành công
           setState(() {
-            _image = null;
-            _isImageCaptured = false;
+            _image = null; // Đặt lại file ảnh
+            _isImageCaptured = false; // Đặt lại trạng thái đã chụp ảnh
           });
-          await _getRecord();
-          return response.data['location'];
+          await _getRecord(); // Lấy lại thông tin bản ghi
+          return response.data['location']; // Trả về location của ảnh
         } else {
-          _showErrorMessage(AppLocalizations.of(context)!.checkinUploadError);
+          // Nếu tải lên thất bại
+          _showErrorMessage(AppLocalizations.of(context)!
+              .checkinUploadError); // Hiển thị thông báo lỗi
         }
       } catch (e) {
-        _showErrorMessage(AppLocalizations.of(context)!.checkinUploadError);
+        // Nếu có lỗi
+        _showErrorMessage(AppLocalizations.of(context)!
+            .checkinUploadError); // Hiển thị thông báo lỗi
       } finally {
         setState(() {
-          _isLoadingImage = false;
+          _isLoadingImage = false; // Đặt trạng thái không tải ảnh
         });
       }
     } else {
-      _showErrorMessage(AppLocalizations.of(context)!.checkinSelectImage);
+      _showErrorMessage(AppLocalizations.of(context)!
+          .checkinSelectImage); // Hiển thị thông báo lỗi nếu không có ảnh
     }
-    return null;
+    return null; // Trả về null nếu không thành công
   }
 
   @override
   Widget build(BuildContext context) {
-    screenHeight = MediaQuery.of(context).size.height;
-    screenWidth = MediaQuery.of(context).size.width;
+    // Hàm build giao diện người dùng
+    screenHeight = MediaQuery.of(context).size.height; // Lấy chiều cao màn hình
+    screenWidth = MediaQuery.of(context).size.width; // Lấy chiều rộng màn hình
     return Scaffold(
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -196,7 +225,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
               alignment: Alignment.centerLeft,
               margin: const EdgeInsets.only(top: 15),
               child: Text(
-                AppLocalizations.of(context)!.checkinHello,
+                AppLocalizations.of(context)!.checkinHello, // Hiển thị lời chào
                 style: const TextStyle(color: Colors.black45, fontSize: 25),
               ),
             ),
@@ -206,21 +235,24 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      AppLocalizations.of(context)!.checkinMrMrs,
+                      AppLocalizations.of(context)!
+                          .checkinMrMrs, // Hiển thị Mr/Mrs
                       style: TextStyle(
                           color: primaryColor,
                           fontSize: 17,
                           fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      AppLocalizations.of(context)!.checkinEmail,
+                      AppLocalizations.of(context)!
+                          .checkinEmail, // Hiển thị Email
                       style: TextStyle(
                           color: primaryColor,
                           fontSize: 17,
                           fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      AppLocalizations.of(context)!.checkinYourLocation,
+                      AppLocalizations.of(context)!
+                          .checkinYourLocation, // Hiển thị vị trí
                       style: TextStyle(
                           color: primaryColor,
                           fontSize: 17,
@@ -233,21 +265,21 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      ':  ${widget.currentUser.name}',
+                      ':  ${widget.currentUser.name}', // Hiển thị tên người dùng
                       style: const TextStyle(
                           fontSize: 16,
                           color: Colors.black,
                           fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      ':  ${widget.currentUser.email}',
+                      ':  ${widget.currentUser.email}', // Hiển thị email người dùng
                       style: const TextStyle(
                           fontSize: 16,
                           color: Colors.black,
                           fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      ':  ...', // Displaying "..." as placeholder
+                      ':  ...', // Hiển thị "..."
                       style: const TextStyle(
                           fontSize: 16,
                           color: Colors.black,
@@ -260,7 +292,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
             Container(
               alignment: Alignment.centerLeft,
               child: Text(
-                AppLocalizations.of(context)!.checkinTodayInformation,
+                AppLocalizations.of(context)!
+                    .checkinTodayInformation, // Hiển thị thông tin ngày
                 style: const TextStyle(
                     color: Colors.black,
                     fontSize: 25,
@@ -286,12 +319,14 @@ class _CheckinScreenState extends State<CheckinScreen> {
                   ])),
             ),
             StreamBuilder(
-                stream: Stream.periodic(const Duration(seconds: 1)),
+                stream: Stream.periodic(
+                    const Duration(seconds: 1)), // Stream để cập nhật thời gian
                 builder: (context, Snapshot) {
                   return Container(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      DateFormat("HH:mm:ss").format(DateTime.now()),
+                      DateFormat("HH:mm:ss").format(
+                          DateTime.now()), // Hiển thị thời gian hiện tại
                       style:
                           const TextStyle(fontSize: 17, color: Colors.black45),
                     ),
@@ -319,16 +354,19 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        AppLocalizations.of(context)!.checkinCheckin,
+                        AppLocalizations.of(context)!
+                            .checkinCheckin, // Hiển thị nhãn check-in
                         style: const TextStyle(
                             fontSize: 20, color: Colors.black54),
                       ),
                       StreamBuilder<Records?>(
-                        stream: _recordStreamController.stream,
+                        stream: _recordStreamController
+                            .stream, // Stream để cập nhật thời gian check-in
                         builder: (context, snapshot) {
                           if (snapshot.hasData) {
                             return Text(
-                              snapshot.data?.checkIn ?? checkIn,
+                              snapshot.data?.checkIn ??
+                                  checkIn, // Hiển thị thời gian check-in
                               style: const TextStyle(
                                   fontSize: 20,
                                   color: Colors.black,
@@ -353,16 +391,19 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        AppLocalizations.of(context)!.checkinCheckout,
+                        AppLocalizations.of(context)!
+                            .checkinCheckout, // Hiển thị nhãn check-out
                         style: const TextStyle(
                             fontSize: 20, color: Colors.black54),
                       ),
                       StreamBuilder<Records?>(
-                        stream: _recordStreamController.stream,
+                        stream: _recordStreamController
+                            .stream, // Stream để cập nhật thời gian check-out
                         builder: (context, snapshot) {
                           if (snapshot.hasData) {
                             return Text(
-                              snapshot.data?.checkOut ?? checkOut,
+                              snapshot.data?.checkOut ??
+                                  checkOut, // Hiển thị thời gian check-out
                               style: const TextStyle(
                                   fontSize: 20,
                                   color: Colors.black,
@@ -387,7 +428,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
             Row(
               children: [
                 IconButton(
-                  onPressed: _getImageFromCamera,
+                  onPressed: _getImageFromCamera, // Gọi hàm chụp ảnh khi nhấn
                   icon: Stack(
                     alignment: Alignment.center,
                     children: [
@@ -419,9 +460,10 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             _image != null &&
                             !_isLoadingImage
                         ? () async {
+                            // Hàm check-in
                             String? locationImg =
                                 await _uploadImageAndReturnLocation(
-                                    _image, 'checkin');
+                                    _image, 'checkin'); // Tải ảnh lên server
 
                             Records record = Records(
                               id: 0,
@@ -433,25 +475,25 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               shiftId: 1,
                               lateMinutes: 0,
                               status: 'Working',
-                              location: locationImg ?? '',
+                              location: locationImg ?? '', // Lưu vị trí ảnh
                               remark: 'None',
                               imgName:
-                                  'checkin_${widget.currentUser.userId}_${widget.currentUser.name}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                                  'checkin_${widget.currentUser.userId}_${widget.currentUser.name}_${DateTime.now().millisecondsSinceEpoch}.jpg', // Lưu tên ảnh
                               ip: 'none', // ip set as empty string
                             );
 
                             try {
                               final response = await _apiHandler.insertRecord(
-                                  record, _image);
+                                  record, _image); // Gọi API để check-in
 
                               if (response.statusCode == 201) {
                                 print(
                                     'Check-in successful: ${response.statusCode}');
                                 setState(() {
-                                  checkIn = DateFormat('HH:mm')
-                                      .format(DateTime.now());
+                                  checkIn = DateFormat('HH:mm').format(DateTime
+                                      .now()); // Cập nhật thời gian check-in
 
-                                  _getRecord();
+                                  _getRecord(); // Lấy lại thông tin bản ghi
                                 });
                               } else {
                                 if (response.statusCode == 400) {
@@ -486,9 +528,10 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     ),
                     child: Text(
                       _isImageCaptured
-                          ? AppLocalizations.of(context)!.checkinPressToCheckIn
+                          ? AppLocalizations.of(context)!
+                              .checkinPressToCheckIn // Hiển thị nhãn check-in
                           : AppLocalizations.of(context)!
-                              .checkinTakePictureAndCheckLocation,
+                              .checkinTakePictureAndCheckLocation, // Hiển thị nhãn chụp ảnh
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -508,9 +551,10 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             _image != null &&
                             !_isLoadingImage
                         ? () async {
+                            // Hàm check-out
                             String? locationImg =
                                 await _uploadImageAndReturnLocation(
-                                    _image, 'checkout');
+                                    _image, 'checkout'); // Tải ảnh lên server
 
                             Records record = Records(
                               id: 0,
@@ -522,24 +566,24 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               shiftId: 1,
                               lateMinutes: 0,
                               status: 'Off work',
-                              location: locationImg ?? '',
+                              location: locationImg ?? '', // Lưu vị trí ảnh
                               remark: 'None',
                               imgName:
-                                  'checkout-${_currentDayCheckOutCount}_${widget.currentUser.userId}_${widget.currentUser.name}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                                  'checkout-${_currentDayCheckOutCount}_${widget.currentUser.userId}_${widget.currentUser.name}_${DateTime.now().millisecondsSinceEpoch}.jpg', // Lưu tên ảnh
                               ip: 'none', // ip set as empty string
                             );
                             try {
                               final response = await _apiHandler.insertRecord(
-                                  record, _image);
+                                  record, _image); // Gọi API để check-out
 
                               if (response.statusCode == 201) {
                                 print(
                                     'Check-out successful: ${response.statusCode}');
                                 setState(() {
-                                  checkOut = DateFormat('HH:mm')
-                                      .format(DateTime.now());
+                                  checkOut = DateFormat('HH:mm').format(DateTime
+                                      .now()); // Cập nhật thời gian check-out
 
-                                  _getRecord();
+                                  _getRecord(); // Lấy lại thông tin bản ghi
                                 });
                               } else {
                                 if (response.statusCode == 400) {
@@ -574,9 +618,10 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     ),
                     child: Text(
                       _isImageCaptured
-                          ? AppLocalizations.of(context)!.checkinPressToCheckOut
+                          ? AppLocalizations.of(context)!
+                              .checkinPressToCheckOut // Hiển thị nhãn check-out
                           : AppLocalizations.of(context)!
-                              .checkinTakePictureAndCheckLocation,
+                              .checkinTakePictureAndCheckLocation, // Hiển thị nhãn chụp ảnh
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -592,6 +637,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                 height: screenHeight / 15,
                 child: ElevatedButton(
                   onPressed: () {
+                    // Mở màn hình lịch
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -607,7 +653,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
                     ),
                   ),
                   child: Text(
-                    AppLocalizations.of(context)!.checkinViewHistory,
+                    AppLocalizations.of(context)!
+                        .checkinViewHistory, // Hiển thị nhãn xem lịch sử
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -620,7 +667,9 @@ class _CheckinScreenState extends State<CheckinScreen> {
             if (checkIn != "--/--" && checkOut != "--/--")
               Container(
                 margin: const EdgeInsets.only(top: 25),
-                child: Text(AppLocalizations.of(context)!.checkinCheckedInToday,
+                child: Text(
+                    AppLocalizations.of(context)!
+                        .checkinCheckedInToday, // Hiển thị thông báo đã check-in
                     style: TextStyle(
                         fontSize: screenWidth / 20, color: Colors.black54)),
               )

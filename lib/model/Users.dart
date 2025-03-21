@@ -7,6 +7,7 @@ class User {
   String? address;
   String? avatar;
   String? avatarLocation;
+  int isAdmin;
 
   User({
     required this.userId,
@@ -17,6 +18,7 @@ class User {
     this.address,
     this.avatar,
     this.avatarLocation,
+    required this.isAdmin,
   });
 
   // Convert User object to a Map for JSON encoding
@@ -30,6 +32,7 @@ class User {
       'address': address,
       'avatar': avatar,
       'avatarLocation': avatarLocation,
+      'isAdmin': isAdmin,
     };
   }
 
@@ -43,6 +46,7 @@ class User {
     String? address,
     String? avatar,
     String? avatarLocation,
+    int? isAdmin,
   }) {
     return User(
       userId: userId ?? this.userId,
@@ -53,6 +57,7 @@ class User {
       address: address ?? this.address,
       avatar: avatar ?? this.avatar,
       avatarLocation: avatarLocation ?? this.avatarLocation,
+      isAdmin: isAdmin ?? this.isAdmin,
     );
   }
 
@@ -67,6 +72,7 @@ class User {
       address: json['address'],
       avatar: json['avatar'],
       avatarLocation: json['avatarLocation'],
+      isAdmin: json['isAdmin'] ?? 0,
     );
   }
 }
